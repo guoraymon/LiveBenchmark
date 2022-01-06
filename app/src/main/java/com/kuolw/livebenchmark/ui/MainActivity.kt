@@ -1,4 +1,4 @@
-package com.kuolw.livebenchmark
+package com.kuolw.livebenchmark.ui
 
 import android.content.ContentValues.TAG
 import android.os.Bundle
@@ -6,6 +6,7 @@ import android.text.TextUtils.isEmpty
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kuolw.ijkplayer.IjkPlayer
+import com.kuolw.livebenchmark.model.Source
 import com.kuolw.livebenchmark.ui.theme.LiveBenchmarkTheme
+import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.util.*
@@ -33,32 +36,8 @@ class MainActivity : ComponentActivity() {
             LiveBenchmarkTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(color = MaterialTheme.colors.background) {
-                    val sources = listOf(
-                        Source(
-                            "厦门卫视",
-                            "http://223.110.246.73/ott.js.chinamobile.com/PLTV/4/224/3221226996/index.m3u8"
-                        ),
-                        Source(
-                            "CCTV1",
-                            "http://39.135.53.199/ott.fj.chinamobile.com/PLTV/88888888/224/3221225829/index.m3u8"
-                        ),
-                        Source(
-                            "CCTV2",
-                            "http://39.135.53.199/ott.fj.chinamobile.com/PLTV/88888888/224/3221225923/index.m3u8"
-                        ),
-                        Source(
-                            "CCTV4",
-                            "http://39.135.53.199/ott.fj.chinamobile.com/PLTV/88888888/224/3221226968/index.m3u8"
-                        ),
-                        Source(
-                            "厦门卫视",
-                            "http://39.135.53.194/ott.fj.chinamobile.com/PLTV/88888888/224/3221226781/index.m3u8"
-                        ),
-                        Source(
-                            "漳州一套",
-                            "http://31182.hlsplay.aodianyun.com/lms_31182/tv_channel_175.m3u8"
-                        ),
-                    )
+                    val model: SourceViewModel by viewModels()
+
                     var url by remember { mutableStateOf("") }
                     var width by remember { mutableStateOf(0) }
                     var height by remember { mutableStateOf(0) }
@@ -68,6 +47,7 @@ class MainActivity : ComponentActivity() {
                     var bitRate by remember { mutableStateOf(0L) }
                     var decodeFps by remember { mutableStateOf(0F) }
                     var outputFps by remember { mutableStateOf(0F) }
+
                     Column {
                         Box {
                             PlayerView(
@@ -96,7 +76,7 @@ class MainActivity : ComponentActivity() {
                                 outputFps
                             )
                         }
-                        SourceList(sources) { source ->
+                        SourceList(model.sources) { source ->
                             url = source.url
                         }
                     }
@@ -105,8 +85,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-class Source(val name: String, val url: String)
 
 @Composable
 fun PlayerView(
