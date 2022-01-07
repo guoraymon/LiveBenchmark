@@ -4,7 +4,6 @@ import android.app.Application
 import com.kuolw.livebenchmark.db.AppDatabase
 
 class MainApplication : Application() {
-    fun getDatabase(): AppDatabase {
-        return AppDatabase.getDatabase(this)
-    }
+    private val database by lazy { AppDatabase.getDatabase(this) }
+    val repository by lazy { AppRepository(database) }
 }

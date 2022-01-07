@@ -22,22 +22,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.kuolw.ijkplayer.IjkPlayer
-import com.kuolw.livebenchmark.model.Source
+import com.kuolw.livebenchmark.MainApplication
+import com.kuolw.livebenchmark.db.entity.SourceEntity
 import com.kuolw.livebenchmark.ui.theme.LiveBenchmarkTheme
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
+import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.util.*
 
 class MainActivity : ComponentActivity() {
+    private val sourceViewModel: SourceViewModel by viewModels {
+        SourceViewModelFactory((application as MainApplication).repository)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
             LiveBenchmarkTheme {
                 // A surface container using the 'background' color from the theme
                 Surface(color = MaterialTheme.colors.background) {
-                    val model: SourceViewModel by viewModels()
-
                     var url by remember { mutableStateOf("") }
                     var width by remember { mutableStateOf(0) }
                     var height by remember { mutableStateOf(0) }
@@ -76,8 +80,8 @@ class MainActivity : ComponentActivity() {
                                 outputFps
                             )
                         }
-                        SourceList(model.sources) { source ->
-                            url = source.url
+                        SourceList(sourceViewModel) { source ->
+                            url = source.src
                         }
                     }
                 }
@@ -163,9 +167,10 @@ fun PlayerInfo(
 }
 
 @Composable
-fun SourceList(sources: List<Source>, onClick: (Source) -> Unit) {
+fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit) {
+    val sources = sourceViewModel.sources.collectAsState(arrayListOf())
     LazyColumn {
-        items(sources) { source ->
+        items(sources.value) { source ->
             Column(
                 Modifier
                     .clickable(onClick = { onClick(source) })
@@ -173,7 +178,7 @@ fun SourceList(sources: List<Source>, onClick: (Source) -> Unit) {
             ) {
                 Text(source.name)
                 Text(
-                    source.url,
+                    source.src,
                     color = Color.Gray,
                     fontSize = 16.sp,
                     maxLines = 1,

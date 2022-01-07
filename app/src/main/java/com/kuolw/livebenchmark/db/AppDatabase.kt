@@ -4,11 +4,12 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.kuolw.livebenchmark.model.Source
+import com.kuolw.livebenchmark.db.dao.SourceDao
+import com.kuolw.livebenchmark.db.entity.SourceEntity
 
-@Database(entities = [Source::class], version = 1)
+@Database(entities = [SourceEntity::class], version = 1)
 abstract class AppDatabase : RoomDatabase() {
-//    abstract fun sourceDao(): SourceDao
+    abstract fun sourceDao(): SourceDao
 
     companion object {
         // Singleton prevents multiple instances of database opening at the
