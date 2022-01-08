@@ -3,11 +3,14 @@ package com.kuolw.livebenchmark.ui
 import android.content.ContentValues.TAG
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.TextUtils.isEmpty
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.annotation.CallSuper
 import androidx.compose.foundation.background
@@ -40,15 +43,15 @@ class MainActivity : ComponentActivity() {
         SourceViewModelFactory((application as MainApplication).repository)
     }
 
+    private val openFileActivity =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            Log.d(TAG, "onCreate: $uri")
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent {
-            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                addCategory(Intent.CATEGORY_OPENABLE)
-//                        type = "application/"
-            }
-            Log.d(TAG, "onCreate: ")
 
+        setContent {
             var url by remember { mutableStateOf("") }
             var width by remember { mutableStateOf(0) }
             var height by remember { mutableStateOf(0) }
@@ -76,7 +79,10 @@ class MainActivity : ComponentActivity() {
                                             expanded = expanded,
                                             onDismissRequest = { expanded = false }
                                         ) {
-                                            DropdownMenuItem(onClick = { /* Handle refresh! */ }) {
+                                            DropdownMenuItem(onClick = {
+                                                openFileActivity.launch(arrayOf("audio/x-mpegurl"))
+                                                expanded = false
+                                            }) {
                                                 Text("Import")
                                             }
                                             DropdownMenuItem(onClick = { /* Handle settings! */ }) {
