@@ -12,14 +12,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Text
-import androidx.compose.material3.*
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,10 +40,15 @@ class MainActivity : ComponentActivity() {
         SourceViewModelFactory((application as MainApplication).repository)
     }
 
-    @ExperimentalMaterial3Api
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+//                        type = "application/"
+            }
+            Log.d(TAG, "onCreate: ")
+
             var url by remember { mutableStateOf("") }
             var width by remember { mutableStateOf(0) }
             var height by remember { mutableStateOf(0) }
@@ -60,11 +64,25 @@ class MainActivity : ComponentActivity() {
                 Surface {
                     Scaffold(
                         topBar = {
-                            CenterAlignedTopAppBar(
+                            TopAppBar(
                                 title = { Text("LiveBenchmark") },
                                 actions = {
-                                    IconButton(onClick = { /* doSomething() */ }) {
-                                        Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                                    var expanded by remember { mutableStateOf(false) }
+                                    Box {
+                                        IconButton(onClick = { expanded = true }) {
+                                            Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                                        }
+                                        DropdownMenu(
+                                            expanded = expanded,
+                                            onDismissRequest = { expanded = false }
+                                        ) {
+                                            DropdownMenuItem(onClick = { /* Handle refresh! */ }) {
+                                                Text("Import")
+                                            }
+                                            DropdownMenuItem(onClick = { /* Handle settings! */ }) {
+                                                Text("Export")
+                                            }
+                                        }
                                     }
                                 }
                             )
