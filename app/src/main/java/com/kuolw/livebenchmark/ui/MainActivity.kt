@@ -1,6 +1,7 @@
 package com.kuolw.livebenchmark.ui
 
 import android.content.ContentValues.TAG
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.TextUtils.isEmpty
@@ -8,27 +9,26 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.annotation.CallSuper
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.kuolw.livebenchmark.ui.theme.AppTheme
 import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
 import com.kuolw.livebenchmark.db.entity.SourceEntity
+import com.kuolw.livebenchmark.ui.theme.AppTheme
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
 import tv.danmaku.ijk.media.player.IMediaPlayer
@@ -205,12 +205,17 @@ fun PlayerInfo(
 
 @Composable
 fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit) {
+    var id by remember { mutableStateOf(0) }
     val sources = sourceViewModel.sources.collectAsState(arrayListOf())
     LazyColumn {
-        items(sources.value) { source ->
+        itemsIndexed(sources.value) { index, source ->
             Column(
                 Modifier
-                    .clickable(onClick = { onClick(source) })
+                    .clickable(onClick = {
+                        id = index
+                        onClick(source)
+                    })
+                    .background(if (id == index) Color.LightGray else Color.White)
                     .padding(4.dp)
             ) {
                 Text(source.name)
