@@ -1,18 +1,14 @@
 package com.kuolw.livebenchmark.ui
 
 import android.content.ContentValues.TAG
-import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.text.TextUtils.isEmpty
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.annotation.CallSuper
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -34,8 +30,11 @@ import com.kuolw.livebenchmark.db.entity.SourceEntity
 import com.kuolw.livebenchmark.ui.theme.AppTheme
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
+import net.bjoernpetersen.m3u.M3uParser
+import net.bjoernpetersen.m3u.model.M3uEntry
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
+import java.io.*
 import java.util.*
 
 class MainActivity : ComponentActivity() {
@@ -45,12 +44,27 @@ class MainActivity : ComponentActivity() {
 
     private val openFileActivity =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            Log.d(TAG, "onCreate: $uri")
+            contentResolver.openInputStream(uri!!).use { inputStream ->
+                val m3uReader: InputStreamReader = inputStream!!.reader()
+                val m3uEntries: List<M3uEntry> = M3uParser.parse(m3uReader)
+
+                Thread {
+                    for (m3uEntry in m3uEntries) {
+                        (application as MainApplication).database.sourceDao().insert(
+                            SourceEntity(
+                                id = 0,
+                                name = m3uEntry.title!!,
+                                src = m3uEntry.location.toString()
+                            )
+                        )
+                        Log.d(TAG, "insert success!")
+                    }
+                }.start()
+            }
         }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         setContent {
             var url by remember { mutableStateOf("") }
             var width by remember { mutableStateOf(0) }
@@ -223,6 +237,7 @@ fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit
                     })
                     .background(if (id == index) Color.LightGray else Color.White)
                     .padding(4.dp)
+                    .fillMaxWidth()
             ) {
                 Text(source.name)
                 Text(
