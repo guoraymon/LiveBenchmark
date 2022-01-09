@@ -34,7 +34,7 @@ import net.bjoernpetersen.m3u.M3uParser
 import net.bjoernpetersen.m3u.model.M3uEntry
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
-import java.io.*
+import java.io.InputStreamReader
 import java.util.*
 
 class MainActivity : ComponentActivity() {
@@ -42,22 +42,24 @@ class MainActivity : ComponentActivity() {
         SourceViewModelFactory((application as MainApplication).repository)
     }
 
-    private val openFileActivity =
+    private val importActivityResult =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            contentResolver.openInputStream(uri!!).use { inputStream ->
-                val m3uReader: InputStreamReader = inputStream!!.reader()
-                val m3uEntries: List<M3uEntry> = M3uParser.parse(m3uReader)
-
+            if (uri !== null) {
                 Thread {
-                    for (m3uEntry in m3uEntries) {
-                        (application as MainApplication).database.sourceDao().insert(
-                            SourceEntity(
-                                id = 0,
-                                name = m3uEntry.title!!,
-                                src = m3uEntry.location.toString()
+                    contentResolver.openInputStream(uri).use { inputStream ->
+                        val m3uReader: InputStreamReader = inputStream!!.reader()
+                        val m3uEntries: List<M3uEntry> = M3uParser.parse(m3uReader)
+
+                        for (m3uEntry in m3uEntries) {
+                            (application as MainApplication).database.sourceDao().insert(
+                                SourceEntity(
+                                    id = 0,
+                                    name = m3uEntry.title!!,
+                                    src = m3uEntry.location.toString()
+                                )
                             )
-                        )
-                        Log.d(TAG, "insert success!")
+                            Log.d(TAG, "insert success!")
+                        }
                     }
                 }.start()
             }
@@ -94,7 +96,7 @@ class MainActivity : ComponentActivity() {
                                             onDismissRequest = { expanded = false }
                                         ) {
                                             DropdownMenuItem(onClick = {
-                                                openFileActivity.launch(arrayOf("audio/x-mpegurl"))
+                                                importActivityResult.launch(arrayOf("audio/x-mpegurl"))
                                                 expanded = false
                                             }) {
                                                 Text("Import")
@@ -225,28 +227,53 @@ fun PlayerInfo(
 
 @Composable
 fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit) {
-    var id by remember { mutableStateOf(0) }
+    var clickId: Int? by remember { mutableStateOf(null) }
+    var expandedId: Int? by remember { mutableStateOf(null) }
+
     val sources = sourceViewModel.sources.collectAsState(arrayListOf())
     LazyColumn {
         itemsIndexed(sources.value) { index, source ->
-            Column(
-                Modifier
+            Row(
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
                     .clickable(onClick = {
-                        id = index
+                        clickId = index
                         onClick(source)
                     })
-                    .background(if (id == index) Color.LightGray else Color.White)
+                    .background(if (clickId == index) Color.LightGray else Color.White)
                     .padding(4.dp)
                     .fillMaxWidth()
             ) {
-                Text(source.name)
-                Text(
-                    source.src,
-                    color = Color.Gray,
-                    fontSize = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .padding(start = 4.dp)
+                ) {
+                    Text(source.name)
+                    Text(
+                        source.src,
+                        color = Color.Gray,
+                        fontSize = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Box {
+                    IconButton(onClick = { expandedId = index }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                    }
+                    DropdownMenu(
+                        expanded = expandedId == index,
+                        onDismissRequest = { expandedId = null }
+                    ) {
+                        DropdownMenuItem(onClick = { }) {
+                            Text("Edit")
+                        }
+                        DropdownMenuItem(onClick = { }) {
+                            Text("Delete")
+                        }
+                    }
+                }
             }
         }
     }
