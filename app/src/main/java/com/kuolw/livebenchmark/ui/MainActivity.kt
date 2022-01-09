@@ -45,23 +45,19 @@ class MainActivity : ComponentActivity() {
     private val importActivityResult =
         registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
             if (uri !== null) {
-                Thread {
-                    contentResolver.openInputStream(uri).use { inputStream ->
-                        val m3uReader: InputStreamReader = inputStream!!.reader()
-                        val m3uEntries: List<M3uEntry> = M3uParser.parse(m3uReader)
-
-                        for (m3uEntry in m3uEntries) {
-                            (application as MainApplication).database.sourceDao().insert(
-                                SourceEntity(
-                                    id = 0,
-                                    name = m3uEntry.title!!,
-                                    src = m3uEntry.location.toString()
-                                )
+                contentResolver.openInputStream(uri).use { inputStream ->
+                    val m3uReader: InputStreamReader = inputStream!!.reader()
+                    val m3uEntries: List<M3uEntry> = M3uParser.parse(m3uReader)
+                    for (m3uEntry in m3uEntries) {
+                        sourceViewModel.insert(
+                            SourceEntity(
+                                id = 0,
+                                name = m3uEntry.title!!,
+                                src = m3uEntry.location.toString()
                             )
-                            Log.d(TAG, "insert success!")
-                        }
+                        )
                     }
-                }.start()
+                }
             }
         }
 
@@ -81,6 +77,34 @@ class MainActivity : ComponentActivity() {
             AppTheme {
                 // A surface container using the 'background' color from the theme
                 Surface {
+                    // delete all dialog
+                    val deleteALLDialog = remember { mutableStateOf(false) }
+                    if (deleteALLDialog.value) {
+                        AlertDialog(
+                            title = {
+                                Text(text = "Delete All")
+                            },
+                            text = {
+                                Text(
+                                    "Delete All? "
+                                )
+                            },
+                            onDismissRequest = {
+                                deleteALLDialog.value = false
+                            },
+                            confirmButton = {
+                                TextButton(
+                                    onClick = {
+                                        sourceViewModel.deleteAll()
+                                        deleteALLDialog.value = false
+                                    }
+                                ) {
+                                    Text("Confirm")
+                                }
+                            },
+                        )
+                    }
+
                     Scaffold(
                         topBar = {
                             TopAppBar(
@@ -101,8 +125,16 @@ class MainActivity : ComponentActivity() {
                                             }) {
                                                 Text("Import")
                                             }
-                                            DropdownMenuItem(onClick = { /* Handle settings! */ }) {
+                                            DropdownMenuItem(onClick = {
+                                                expanded = false
+                                            }) {
                                                 Text("Export")
+                                            }
+                                            DropdownMenuItem(onClick = {
+                                                deleteALLDialog.value = true
+                                                expanded = false
+                                            }) {
+                                                Text("Delete All")
                                             }
                                         }
                                     }
@@ -269,7 +301,10 @@ fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit
                         DropdownMenuItem(onClick = { }) {
                             Text("Edit")
                         }
-                        DropdownMenuItem(onClick = { }) {
+                        DropdownMenuItem(onClick = {
+                            expandedId = null
+                            sourceViewModel.delete(source)
+                        }) {
                             Text("Delete")
                         }
                     }
