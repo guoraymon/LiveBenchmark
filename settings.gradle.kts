@@ -7,5 +7,5 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "LiveBenchmark"
-include ':app'
-include ':ijkplayer'
+include(":app")
+include(":ijkplayer")
