@@ -14,8 +14,6 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
     private var mSurfaceView: SurfaceView = SurfaceView(context)
     var mMediaPlayer: IjkMediaPlayer = IjkMediaPlayer()
 
-    private lateinit var mOnPreparedListener: IMediaPlayer.OnPreparedListener
-
     constructor(context: Context) : super(context)
     constructor(context: Context, attrs: AttributeSet) : super(context, attrs)
     constructor(context: Context, attrs: AttributeSet, defStyleAttr: Int) : super(
@@ -50,18 +48,6 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
 
         mMediaPlayer.dataSource = url
         mMediaPlayer.prepareAsync()
-
-        mMediaPlayer.setOnPreparedListener(mOnPreparedListener)
-    }
-
-    /**
-     * Register a callback to be invoked when the media file
-     * is loaded and ready to go.
-     *
-     * @param l The callback that will be run
-     */
-    fun setOnPreparedListener(l: IMediaPlayer.OnPreparedListener) {
-        mOnPreparedListener = l
     }
 
     override fun start() {
@@ -106,5 +92,17 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
 
     override fun getAudioSessionId(): Int {
         TODO("Not yet implemented")
+    }
+
+    fun setOnPreparedListener(listener: IMediaPlayer.OnPreparedListener) {
+        mMediaPlayer.setOnPreparedListener(listener)
+    }
+
+    fun setOnInfoListener(listener: IMediaPlayer.OnInfoListener) {
+        mMediaPlayer.setOnInfoListener(listener)
+    }
+
+    fun setOnErrorListener(listener: IMediaPlayer.OnErrorListener) {
+        mMediaPlayer.setOnErrorListener(listener)
     }
 }

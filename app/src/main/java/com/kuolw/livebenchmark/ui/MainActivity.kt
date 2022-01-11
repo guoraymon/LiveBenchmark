@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.text.TextUtils.isEmpty
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,16 +29,20 @@ import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
 import com.kuolw.livebenchmark.db.entity.SourceEntity
 import com.kuolw.livebenchmark.ui.theme.AppTheme
+import com.kuolw.livebenchmark.viewmodel.AppViewModel
+import com.kuolw.livebenchmark.viewmodel.AppViewModelFactory
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
 import net.bjoernpetersen.m3u.M3uParser
 import net.bjoernpetersen.m3u.model.M3uEntry
 import tv.danmaku.ijk.media.player.IMediaPlayer
-import tv.danmaku.ijk.media.player.IjkMediaPlayer
 import java.io.InputStreamReader
 import java.util.*
 
 class MainActivity : ComponentActivity() {
+    private val appViewModel: AppViewModel by viewModels {
+        AppViewModelFactory()
+    }
     private val sourceViewModel: SourceViewModel by viewModels {
         SourceViewModelFactory((application as MainApplication).repository)
     }
@@ -64,7 +69,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var url by remember { mutableStateOf("") }
             var width by remember { mutableStateOf(0) }
             var height by remember { mutableStateOf(0) }
             var format by remember { mutableStateOf("") }
@@ -145,7 +149,13 @@ class MainActivity : ComponentActivity() {
                         Column {
                             Box {
                                 PlayerView(
-                                    url,
+                                    appViewModel.isPlay.value,
+                                    appViewModel.url.value,
+                                    onPingListener = {
+                                        bitRate = it.mMediaPlayer.bitRate
+                                        decodeFps = it.mMediaPlayer.videoDecodeFramesPerSecond
+                                        outputFps = it.mMediaPlayer.videoOutputFramesPerSecond
+                                    },
                                     onPreparedListener = {
                                         width = it.videoWidth
                                         height = it.videoHeight
@@ -153,12 +163,19 @@ class MainActivity : ComponentActivity() {
                                         videoDecoder = it.mediaInfo.mVideoDecoderImpl
                                         audioDecoder = it.mediaInfo.mAudioDecoderImpl
                                     },
-                                    onPlayerListener = {
-                                        bitRate = it.bitRate
-                                        decodeFps = it.videoDecodeFramesPerSecond
-                                        outputFps = it.videoOutputFramesPerSecond
+                                    onInfoListener = { mp: IMediaPlayer, what, extra ->
+                                        Log.d(TAG, "onCreate: $mp, $what, $extra")
+                                        true
                                     }
-                                )
+                                ) { mp: IMediaPlayer, what, extra ->
+                                    Log.d(TAG, "onCreate: $mp, $what, $extra")
+                                    Toast.makeText(
+                                        applicationContext,
+                                        "播放失败 $what",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    true
+                                }
                                 PlayerInfo(
                                     width,
                                     height,
@@ -171,7 +188,8 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             SourceList(sourceViewModel) { source ->
-                                url = source.src
+                                appViewModel.isPlay.value = true
+                                appViewModel.url.value = source.src
                             }
                         }
                     }
@@ -179,13 +197,27 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    override fun onPause() {
+        appViewModel.isPlayOld.value = appViewModel.isPlay.value
+        appViewModel.isPlay.value = false
+        super.onPause()
+    }
+
+    override fun onRestart() {
+        super.onRestart()
+        appViewModel.isPlay.value = appViewModel.isPlayOld.value
+    }
 }
 
 @Composable
 fun PlayerView(
+    isPlay: Boolean,
     url: String,
-    onPreparedListener: (IMediaPlayer) -> Unit,
-    onPlayerListener: (IjkMediaPlayer) -> Unit
+    onPingListener: ((IjkPlayer) -> Unit)? = null,
+    onPreparedListener: IMediaPlayer.OnPreparedListener? = null,
+    onInfoListener: IMediaPlayer.OnInfoListener? = null,
+    onErrorListener: IMediaPlayer.OnErrorListener? = null,
 ) {
     AndroidView(
         modifier = Modifier
@@ -193,24 +225,34 @@ fun PlayerView(
             .aspectRatio(4 / 3f),
         factory = { context ->
             IjkPlayer(context).apply {
-                this.setOnPreparedListener {
-                    Log.d(TAG, "测试")
-                    onPreparedListener(it)
-                }
+                val ijkPlayer = this
 
-                val view = this
                 Timer().schedule(object : TimerTask() {
                     override fun run() {
-                        if (view.isPlaying) {
-                            onPlayerListener(view.mMediaPlayer)
+                        if (onPingListener != null) {
+                            onPingListener(ijkPlayer)
                         }
                     }
                 }, 0, 1000)
+
+                if (onPreparedListener != null) {
+                    this.setOnPreparedListener(onPreparedListener)
+                }
+                if (onInfoListener != null) {
+                    this.setOnInfoListener(onInfoListener)
+                }
+                if (onErrorListener != null) {
+                    this.setOnErrorListener(onErrorListener)
+                }
             }
         },
         update = { view ->
-            view.setUrl(url)
-            view.start()
+            if (isPlay) {
+                view.setUrl(url)
+                view.start()
+            } else {
+                view.pause()
+            }
         }
     )
 }
