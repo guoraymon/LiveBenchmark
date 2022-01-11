@@ -199,14 +199,14 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        appViewModel.isPlayOld.value = appViewModel.isPlay.value
+        appViewModel.isPlaySave.value = appViewModel.isPlay.value
         appViewModel.isPlay.value = false
         super.onPause()
     }
 
     override fun onRestart() {
         super.onRestart()
-        appViewModel.isPlay.value = appViewModel.isPlayOld.value
+        appViewModel.isPlay.value = appViewModel.isPlaySave.value
     }
 }
 
@@ -246,12 +246,12 @@ fun PlayerView(
                 }
             }
         },
-        update = { view ->
+        update = { ijkPlayer: IjkPlayer ->
             if (isPlay) {
-                view.setUrl(url)
-                view.start()
+                ijkPlayer.setUrl(url)
+                ijkPlayer.start()
             } else {
-                view.pause()
+                ijkPlayer.pause()
             }
         }
     )

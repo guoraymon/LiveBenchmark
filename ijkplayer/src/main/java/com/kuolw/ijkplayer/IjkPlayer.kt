@@ -42,6 +42,9 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
 
     fun setUrl(url: String) {
         if (mMediaPlayer.dataSource != null) {
+            if (mMediaPlayer.dataSource == url) {
+                return
+            }
             mMediaPlayer.reset()
             mMediaPlayer.setDisplay(mSurfaceView.holder)
         }
