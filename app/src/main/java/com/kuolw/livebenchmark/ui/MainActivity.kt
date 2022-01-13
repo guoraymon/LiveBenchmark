@@ -229,6 +229,7 @@ fun PlayerView(
 ) {
     AndroidView(
         modifier = Modifier
+            .background(Color.Black)
             .fillMaxWidth()
             .aspectRatio(4 / 3f),
         factory = { context ->

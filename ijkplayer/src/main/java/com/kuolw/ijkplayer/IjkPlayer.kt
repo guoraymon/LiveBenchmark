@@ -1,17 +1,18 @@
 package com.kuolw.ijkplayer
 
+import android.content.ContentValues.TAG
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
 import android.view.Gravity
 import android.view.SurfaceHolder
-import android.view.SurfaceView
 import android.widget.FrameLayout
 import android.widget.MediaController
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import tv.danmaku.ijk.media.player.IjkMediaPlayer
 
 class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
-    private var mSurfaceView: SurfaceView = SurfaceView(context)
+    private var mSurfaceView: SurfaceRenderView = SurfaceRenderView(context)
     var mMediaPlayer: IjkMediaPlayer = IjkMediaPlayer()
 
     constructor(context: Context) : super(context)
@@ -24,8 +25,8 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
 
     init {
         mSurfaceView.layoutParams = LayoutParams(
-            LayoutParams.MATCH_PARENT,
-            LayoutParams.MATCH_PARENT,
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
             Gravity.CENTER
         )
         mSurfaceView.holder.addCallback(object : SurfaceHolder.Callback {
@@ -51,6 +52,14 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
 
         mMediaPlayer.dataSource = url
         mMediaPlayer.prepareAsync()
+
+        // 视频大小变更监听
+        mMediaPlayer.setOnVideoSizeChangedListener { _, width, height, sarNum, sarDen ->
+            if (width != 0 && height != 0) {
+                mSurfaceView.setVideoSize(width, height)
+                mSurfaceView.setVideoSampleAspectRatio(sarNum, sarDen)
+            }
+        }
     }
 
     override fun start() {
