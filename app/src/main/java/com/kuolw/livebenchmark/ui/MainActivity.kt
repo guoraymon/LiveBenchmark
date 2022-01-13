@@ -67,6 +67,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    private lateinit var mIjkPlayer: IjkPlayer
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -149,46 +151,43 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Column {
                             Box {
-                                PlayerView(
-                                    appViewModel.isPlay.value,
-                                    appViewModel.currSource.value?.src ?: "",
-                                    onCreate = { ijkPlayer ->
-                                        Timer().schedule(object : TimerTask() {
-                                            override fun run() {
-                                                bitRate = ijkPlayer.mMediaPlayer.bitRate
-                                                decodeFps =
-                                                    ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
-                                                outputFps =
-                                                    ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
-                                            }
-                                        }, 0, 1000)
-                                        // 监听预备
-                                        ijkPlayer.setOnPreparedListener {
-                                            width = it.videoWidth
-                                            height = it.videoHeight
-                                            format = it.mediaInfo.mMeta.mFormat
-                                            videoDecoder = it.mediaInfo.mVideoDecoderImpl
-                                            audioDecoder = it.mediaInfo.mAudioDecoderImpl
+                                PlayerView { ijkPlayer ->
+                                    Timer().schedule(object : TimerTask() {
+                                        override fun run() {
+                                            bitRate = ijkPlayer.mMediaPlayer.bitRate
+                                            decodeFps =
+                                                ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
+                                            outputFps =
+                                                ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
                                         }
-                                        // 监听播放失败
-                                        ijkPlayer.setOnErrorListener { mp: IMediaPlayer, what, extra ->
-                                            Log.d(TAG, "onCreate: $mp, $what, $extra")
+                                    }, 0, 1000)
+                                    // 监听预备
+                                    ijkPlayer.setOnPreparedListener {
+                                        width = it.videoWidth
+                                        height = it.videoHeight
+                                        format = it.mediaInfo.mMeta.mFormat
+                                        videoDecoder = it.mediaInfo.mVideoDecoderImpl
+                                        audioDecoder = it.mediaInfo.mAudioDecoderImpl
+                                    }
+                                    // 监听播放失败
+                                    ijkPlayer.setOnErrorListener { mp: IMediaPlayer, what, extra ->
+                                        Log.d(TAG, "onCreate: $mp, $what, $extra")
 
-                                            val currSource = appViewModel.currSource.value
-                                            if (currSource != null) {
-                                                currSource.score = 0
-                                                sourceViewModel.update(currSource)
-                                            }
-
-                                            Toast.makeText(
-                                                applicationContext,
-                                                "播放失败 $what",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                            true
+                                        val currSource = appViewModel.currSource.value
+                                        if (currSource != null) {
+                                            currSource.score = 0
+                                            sourceViewModel.update(currSource)
                                         }
-                                    },
-                                )
+
+                                        Toast.makeText(
+                                            applicationContext,
+                                            "播放失败 $what",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        true
+                                    }
+                                    mIjkPlayer = ijkPlayer
+                                }
                                 PlayerInfo(
                                     width,
                                     height,
@@ -201,8 +200,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             SourceList(sourceViewModel) { source ->
-                                appViewModel.isPlay.value = true
-                                appViewModel.currSource.value = source
+                                mIjkPlayer.setUrl(source.src)
                             }
                         }
                     }
@@ -212,43 +210,26 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onPause() {
-        appViewModel.isPlaySave.value = appViewModel.isPlay.value
-        appViewModel.isPlay.value = false
         super.onPause()
+        mIjkPlayer.pause()
     }
 
     override fun onRestart() {
         super.onRestart()
-        appViewModel.isPlay.value = appViewModel.isPlaySave.value
+        mIjkPlayer.start()
     }
 }
 
 @Composable
-fun PlayerView(
-    isPlay: Boolean,
-    url: String,
-    onCreate: ((IjkPlayer) -> Unit)? = null,
-) {
+fun PlayerView(IjkPlayer: ((IjkPlayer) -> Unit)) {
     AndroidView(
         modifier = Modifier
             .background(Color.Black)
             .fillMaxWidth()
             .aspectRatio(4 / 3f),
         factory = { context ->
-            IjkPlayer(context).apply {
-                if (onCreate != null) {
-                    onCreate(this)
-                }
-            }
+            IjkPlayer(context).apply(IjkPlayer)
         },
-        update = { ijkPlayer: IjkPlayer ->
-            if (isPlay) {
-                ijkPlayer.setUrl(url)
-                ijkPlayer.start()
-            } else {
-                ijkPlayer.pause()
-            }
-        }
     )
 }
 
