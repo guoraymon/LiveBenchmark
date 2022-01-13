@@ -19,6 +19,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
@@ -150,7 +151,7 @@ class MainActivity : ComponentActivity() {
                             Box {
                                 PlayerView(
                                     appViewModel.isPlay.value,
-                                    appViewModel.url.value,
+                                    appViewModel.currSource.value?.src ?: "",
                                     onPingListener = {
                                         bitRate = it.mMediaPlayer.bitRate
                                         decodeFps = it.mMediaPlayer.videoDecodeFramesPerSecond
@@ -169,6 +170,13 @@ class MainActivity : ComponentActivity() {
                                     }
                                 ) { mp: IMediaPlayer, what, extra ->
                                     Log.d(TAG, "onCreate: $mp, $what, $extra")
+
+                                    val currSource = appViewModel.currSource.value
+                                    if (currSource != null) {
+                                        currSource.score = 0
+                                        sourceViewModel.update(currSource)
+                                    }
+
                                     Toast.makeText(
                                         applicationContext,
                                         "播放失败 $what",
@@ -189,7 +197,7 @@ class MainActivity : ComponentActivity() {
                             }
                             SourceList(sourceViewModel) { source ->
                                 appViewModel.isPlay.value = true
-                                appViewModel.url.value = source.src
+                                appViewModel.currSource.value = source
                             }
                         }
                     }
@@ -309,6 +317,7 @@ fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit
         itemsIndexed(sources.value) { index, source ->
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clickable(onClick = {
                         clickId = index
@@ -332,6 +341,7 @@ fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                Text(source.score.toString())
                 Box {
                     IconButton(onClick = { expandedId = index }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "More")

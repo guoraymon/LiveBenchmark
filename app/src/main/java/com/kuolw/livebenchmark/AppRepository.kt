@@ -10,6 +10,10 @@ class AppRepository(private val database: AppDatabase) {
         database.sourceDao().insert(source)
     }
 
+    fun updateSource(source: SourceEntity) {
+        database.sourceDao().update(source)
+    }
+
     fun deleteSource(source: SourceEntity) {
         database.sourceDao().delete(source)
     }

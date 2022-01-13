@@ -17,6 +17,12 @@ class SourceViewModel(private val repository: AppRepository) : ViewModel() {
         }
     }
 
+    fun update(source: SourceEntity) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.updateSource(source)
+        }
+    }
+
     fun delete(source: SourceEntity) {
         viewModelScope.launch(Dispatchers.IO) {
             repository.deleteSource(source)

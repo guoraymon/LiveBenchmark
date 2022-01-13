@@ -10,10 +10,13 @@ interface SourceDao {
     fun getAll(): Flow<List<SourceEntity>>
 
     @Insert
-    fun insert(source: SourceEntity)
+    fun insert(vararg source: SourceEntity)
+
+    @Update
+    fun update(vararg source: SourceEntity)
 
     @Delete
-    fun delete(source: SourceEntity)
+    fun delete(vararg source: SourceEntity)
 
     @Query("DELETE FROM sources")
     fun deleteAll()
