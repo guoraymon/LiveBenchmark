@@ -152,38 +152,43 @@ class MainActivity : ComponentActivity() {
                                 PlayerView(
                                     appViewModel.isPlay.value,
                                     appViewModel.currSource.value?.src ?: "",
-                                    onPingListener = {
-                                        bitRate = it.mMediaPlayer.bitRate
-                                        decodeFps = it.mMediaPlayer.videoDecodeFramesPerSecond
-                                        outputFps = it.mMediaPlayer.videoOutputFramesPerSecond
-                                    },
-                                    onPreparedListener = {
-                                        width = it.videoWidth
-                                        height = it.videoHeight
-                                        format = it.mediaInfo.mMeta.mFormat
-                                        videoDecoder = it.mediaInfo.mVideoDecoderImpl
-                                        audioDecoder = it.mediaInfo.mAudioDecoderImpl
-                                    },
-                                    onInfoListener = { mp: IMediaPlayer, what, extra ->
-                                        Log.d(TAG, "onCreate: $mp, $what, $extra")
-                                        true
-                                    }
-                                ) { mp: IMediaPlayer, what, extra ->
-                                    Log.d(TAG, "onCreate: $mp, $what, $extra")
+                                    onCreate = { ijkPlayer ->
+                                        Timer().schedule(object : TimerTask() {
+                                            override fun run() {
+                                                bitRate = ijkPlayer.mMediaPlayer.bitRate
+                                                decodeFps =
+                                                    ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
+                                                outputFps =
+                                                    ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
+                                            }
+                                        }, 0, 1000)
+                                        // 监听预备
+                                        ijkPlayer.setOnPreparedListener {
+                                            width = it.videoWidth
+                                            height = it.videoHeight
+                                            format = it.mediaInfo.mMeta.mFormat
+                                            videoDecoder = it.mediaInfo.mVideoDecoderImpl
+                                            audioDecoder = it.mediaInfo.mAudioDecoderImpl
+                                        }
+                                        // 监听播放失败
+                                        ijkPlayer.setOnErrorListener { mp: IMediaPlayer, what, extra ->
+                                            Log.d(TAG, "onCreate: $mp, $what, $extra")
 
-                                    val currSource = appViewModel.currSource.value
-                                    if (currSource != null) {
-                                        currSource.score = 0
-                                        sourceViewModel.update(currSource)
-                                    }
+                                            val currSource = appViewModel.currSource.value
+                                            if (currSource != null) {
+                                                currSource.score = 0
+                                                sourceViewModel.update(currSource)
+                                            }
 
-                                    Toast.makeText(
-                                        applicationContext,
-                                        "播放失败 $what",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    true
-                                }
+                                            Toast.makeText(
+                                                applicationContext,
+                                                "播放失败 $what",
+                                                Toast.LENGTH_SHORT
+                                            ).show()
+                                            true
+                                        }
+                                    },
+                                )
                                 PlayerInfo(
                                     width,
                                     height,
@@ -222,10 +227,7 @@ class MainActivity : ComponentActivity() {
 fun PlayerView(
     isPlay: Boolean,
     url: String,
-    onPingListener: ((IjkPlayer) -> Unit)? = null,
-    onPreparedListener: IMediaPlayer.OnPreparedListener? = null,
-    onInfoListener: IMediaPlayer.OnInfoListener? = null,
-    onErrorListener: IMediaPlayer.OnErrorListener? = null,
+    onCreate: ((IjkPlayer) -> Unit)? = null,
 ) {
     AndroidView(
         modifier = Modifier
@@ -234,24 +236,8 @@ fun PlayerView(
             .aspectRatio(4 / 3f),
         factory = { context ->
             IjkPlayer(context).apply {
-                val ijkPlayer = this
-
-                Timer().schedule(object : TimerTask() {
-                    override fun run() {
-                        if (onPingListener != null) {
-                            onPingListener(ijkPlayer)
-                        }
-                    }
-                }, 0, 1000)
-
-                if (onPreparedListener != null) {
-                    this.setOnPreparedListener(onPreparedListener)
-                }
-                if (onInfoListener != null) {
-                    this.setOnInfoListener(onInfoListener)
-                }
-                if (onErrorListener != null) {
-                    this.setOnErrorListener(onErrorListener)
+                if (onCreate != null) {
+                    onCreate(this)
                 }
             }
         },
