@@ -39,6 +39,14 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
             override fun surfaceDestroyed(p0: SurfaceHolder) {}
         })
         this.addView(mSurfaceView)
+
+        // 视频大小变更监听
+        mMediaPlayer.setOnVideoSizeChangedListener { _, width, height, sarNum, sarDen ->
+            if (width != 0 && height != 0) {
+                mSurfaceView.setVideoSize(width, height)
+                mSurfaceView.setVideoSampleAspectRatio(sarNum, sarDen)
+            }
+        }
     }
 
     fun setUrl(url: String) {
@@ -52,14 +60,6 @@ class IjkPlayer : FrameLayout, MediaController.MediaPlayerControl {
 
         mMediaPlayer.dataSource = url
         mMediaPlayer.prepareAsync()
-
-        // 视频大小变更监听
-        mMediaPlayer.setOnVideoSizeChangedListener { _, width, height, sarNum, sarDen ->
-            if (width != 0 && height != 0) {
-                mSurfaceView.setVideoSize(width, height)
-                mSurfaceView.setVideoSampleAspectRatio(sarNum, sarDen)
-            }
-        }
     }
 
     override fun start() {
