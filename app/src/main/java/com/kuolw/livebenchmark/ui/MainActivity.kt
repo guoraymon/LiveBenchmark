@@ -30,20 +30,17 @@ import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
 import com.kuolw.livebenchmark.db.entity.SourceEntity
 import com.kuolw.livebenchmark.ui.theme.AppTheme
-import com.kuolw.livebenchmark.viewmodel.AppViewModel
-import com.kuolw.livebenchmark.viewmodel.AppViewModelFactory
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
 import net.bjoernpetersen.m3u.M3uParser
 import net.bjoernpetersen.m3u.model.M3uEntry
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import java.io.InputStreamReader
+import java.text.DecimalFormat
 import java.util.*
+import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
-    private val appViewModel: AppViewModel by viewModels {
-        AppViewModelFactory()
-    }
     private val sourceViewModel: SourceViewModel by viewModels {
         SourceViewModelFactory((application as MainApplication).repository)
     }
@@ -80,6 +77,96 @@ class MainActivity : ComponentActivity() {
             var bitRate by remember { mutableStateOf(0L) }
             var decodeFps by remember { mutableStateOf(0F) }
             var outputFps by remember { mutableStateOf(0F) }
+
+            var currSource by remember { mutableStateOf(SourceEntity(id = 0, name = "", src = "")) }
+
+            var loadStartAt = 0L // 开始加载时间
+            var bufferStartAt = 0L // 开始缓冲时间
+
+            var loadTime by remember { mutableStateOf(0L) } //加载时长
+            var bufferTime by remember { mutableStateOf(0L) } //缓冲时长
+            var playTime by remember { mutableStateOf(0L) } //播放时长
+
+            val initIjkPlayer = { ijkPlayer: IjkPlayer ->
+                // 监听预备
+                ijkPlayer.setOnPreparedListener { mp: IMediaPlayer ->
+                    Log.d(TAG, "ijkPlayer onPreparedListener: $mp")
+
+                    loadTime = System.currentTimeMillis() - loadStartAt
+                    // 记录加载时长
+                    sourceViewModel.update(currSource.apply {
+                        this.loadTime = loadTime
+                    })
+
+                    width = mp.videoWidth
+                    height = mp.videoHeight
+                    format = mp.mediaInfo.mMeta.mFormat
+                    videoDecoder = mp.mediaInfo.mVideoDecoderImpl
+                    audioDecoder = mp.mediaInfo.mAudioDecoderImpl
+                }
+                // 监听播放信息
+                ijkPlayer.setOnInfoListener { mp, what, extra ->
+                    Log.d(
+                        TAG,
+                        "ijkPlayer setOnInfoListener: $mp, $what, $extra"
+                    )
+
+                    when (what) {
+                        // 开始缓冲
+                        701 -> {
+                            bufferStartAt = System.currentTimeMillis()
+                        }
+                        // 结束缓冲
+                        702 -> {
+                            //记录缓冲时长
+                            if (currSource.id != 0) {
+                                bufferTime = System.currentTimeMillis() - bufferStartAt // 缓冲时长
+                                sourceViewModel.update(currSource.apply {
+                                    this.bufferTime = bufferTime
+                                })
+                            }
+                        }
+                    }
+
+                    true
+                }
+                // 监听播放失败
+                ijkPlayer.setOnErrorListener { _: IMediaPlayer, what, _ ->
+                    sourceViewModel.update(currSource.apply {
+                        this.score = 0.0F
+                        this.over = true
+                    })
+
+                    Toast.makeText(applicationContext, "播放失败 $what", Toast.LENGTH_SHORT).show()
+                    true
+                }
+                Timer().schedule(object : TimerTask() {
+                    override fun run() {
+                        bitRate = ijkPlayer.mMediaPlayer.bitRate
+                        decodeFps = ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
+                        outputFps = ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
+
+                        // 更新节目源加载时长
+                        if (currSource.id != 0) {
+                            playTime = System.currentTimeMillis() - loadStartAt //播放时长
+                            if (bufferStartAt > 0) {
+                                bufferTime = System.currentTimeMillis() - bufferStartAt // 缓冲时长
+                            }
+                            // 评分
+                            val loadScore = (5000 - loadTime) / 5000F
+                            val playScore = (playTime - (loadTime + bufferTime)) / playTime.toFloat()
+                            val score = ((loadScore * 300F).roundToInt() + (playScore * 700F).roundToInt()) / 10.0F
+
+                            sourceViewModel.update(currSource.apply {
+                                this.playTime = playTime
+                                this.bufferTime = bufferTime
+                                this.score = score
+                            })
+                        }
+                    }
+                }, 0, 1000)
+                mIjkPlayer = ijkPlayer
+            }
 
             AppTheme {
                 // A surface container using the 'background' color from the theme
@@ -151,43 +238,7 @@ class MainActivity : ComponentActivity() {
                     ) {
                         Column {
                             Box {
-                                PlayerView { ijkPlayer ->
-                                    Timer().schedule(object : TimerTask() {
-                                        override fun run() {
-                                            bitRate = ijkPlayer.mMediaPlayer.bitRate
-                                            decodeFps =
-                                                ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
-                                            outputFps =
-                                                ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
-                                        }
-                                    }, 0, 1000)
-                                    // 监听预备
-                                    ijkPlayer.setOnPreparedListener {
-                                        width = it.videoWidth
-                                        height = it.videoHeight
-                                        format = it.mediaInfo.mMeta.mFormat
-                                        videoDecoder = it.mediaInfo.mVideoDecoderImpl
-                                        audioDecoder = it.mediaInfo.mAudioDecoderImpl
-                                    }
-                                    // 监听播放失败
-                                    ijkPlayer.setOnErrorListener { mp: IMediaPlayer, what, extra ->
-                                        Log.d(TAG, "onCreate: $mp, $what, $extra")
-
-                                        val currSource = appViewModel.currSource.value
-                                        if (currSource != null) {
-                                            currSource.score = 0
-                                            sourceViewModel.update(currSource)
-                                        }
-
-                                        Toast.makeText(
-                                            applicationContext,
-                                            "播放失败 $what",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        true
-                                    }
-                                    mIjkPlayer = ijkPlayer
-                                }
+                                PlayerView(initIjkPlayer)
                                 PlayerInfo(
                                     width,
                                     height,
@@ -196,11 +247,16 @@ class MainActivity : ComponentActivity() {
                                     audioDecoder,
                                     bitRate,
                                     decodeFps,
-                                    outputFps
+                                    outputFps,
+                                    loadTime,
+                                    bufferTime,
+                                    playTime,
                                 )
                             }
                             SourceList(sourceViewModel) { source ->
+                                currSource = source
                                 mIjkPlayer.setUrl(source.src)
+                                loadStartAt = System.currentTimeMillis()
                             }
                         }
                     }
@@ -221,14 +277,14 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun PlayerView(IjkPlayer: ((IjkPlayer) -> Unit)) {
+fun PlayerView(init: ((IjkPlayer) -> Unit)) {
     AndroidView(
         modifier = Modifier
             .background(Color.Black)
             .fillMaxWidth()
             .aspectRatio(4 / 3f),
         factory = { context ->
-            IjkPlayer(context).apply(IjkPlayer)
+            IjkPlayer(context).apply(init)
         },
     )
 }
@@ -243,8 +299,13 @@ fun PlayerInfo(
     bitRate: Long,
     decodeFps: Float,
     outputFps: Float,
+    loadTime: Long,
+    bufferTime: Long,
+    playTime: Long,
 ) {
-    Column {
+    Column(
+        Modifier.background(Color(0x88EEEEEE))
+    ) {
         Row {
             Text("Width: ", color = Color.Red)
             Text(width.toString(), color = Color.Red)
@@ -271,6 +332,19 @@ fun PlayerInfo(
         Row {
             Text("Fps: ", color = Color.Red)
             Text("%.1f".format(decodeFps) + "," + "%.1f".format(outputFps), color = Color.Red)
+        }
+        Column(
+            Modifier.padding(top = 16.dp)
+        ) {
+            Row {
+                Text("loadTime: $loadTime ms", color = Color.Red)
+            }
+            Row {
+                Text("bufferTime: ${DecimalFormat("#0.0").format((bufferTime / 1000.0))} s", color = Color.Red)
+            }
+            Row {
+                Text("playTime: ${DecimalFormat("#0").format((playTime / 1000.0))} s", color = Color.Red)
+            }
         }
     }
 }

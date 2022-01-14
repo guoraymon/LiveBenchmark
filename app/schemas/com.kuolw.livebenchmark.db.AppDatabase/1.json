@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "023f2ed251ac8dfbfda9670efad4a74e",
+    "identityHash": "961edaba434da6d82d41b14bc58fcc5a",
     "entities": [
       {
         "tableName": "sources",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `src` TEXT NOT NULL, `fail` INTEGER NOT NULL, `score` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `src` TEXT NOT NULL, `load_time` INTEGER NOT NULL, `buffer_time` INTEGER NOT NULL, `play_time` INTEGER NOT NULL, `score` REAL NOT NULL, `over` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -27,14 +27,32 @@
             "notNull": true
           },
           {
-            "fieldPath": "fail",
-            "columnName": "fail",
+            "fieldPath": "loadTime",
+            "columnName": "load_time",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bufferTime",
+            "columnName": "buffer_time",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "playTime",
+            "columnName": "play_time",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
             "fieldPath": "score",
             "columnName": "score",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "over",
+            "columnName": "over",
             "affinity": "INTEGER",
             "notNull": true
           }
@@ -52,7 +70,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '023f2ed251ac8dfbfda9670efad4a74e')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '961edaba434da6d82d41b14bc58fcc5a')"
     ]
   }
 }

@@ -18,6 +18,9 @@ class SourceViewModel(private val repository: AppRepository) : ViewModel() {
     }
 
     fun update(source: SourceEntity) {
+        if (source.id == 0) {
+            return
+        }
         viewModelScope.launch(Dispatchers.IO) {
             repository.updateSource(source)
         }
