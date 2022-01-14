@@ -98,6 +98,7 @@ class MainActivity : ComponentActivity() {
                     // 记录加载时长
                     sourceViewModel.update(currSource.apply {
                         this.loadTime = loadTime
+                        this.check = true
                     })
 
                     width = mp.videoWidth
@@ -135,6 +136,7 @@ class MainActivity : ComponentActivity() {
                 ijkPlayer.setOnErrorListener { _: IMediaPlayer, what, _ ->
                     sourceViewModel.update(currSource.apply {
                         this.score = 0F
+                        this.check = true
                     })
 
                     Toast.makeText(applicationContext, "播放失败 $what", Toast.LENGTH_SHORT).show()
@@ -256,6 +258,7 @@ class MainActivity : ComponentActivity() {
                                 currSource = source
                                 loadSuccess = false
                                 loadStartAt = System.currentTimeMillis()
+                                bufferTime = 0
                                 mIjkPlayer.setUrl(source.src)
                             }
                         }
@@ -383,7 +386,7 @@ fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(source.score.toString())
+                Text(if (source.check) source.score.toString() else "未测试", color = if (source.score >= 80) Color.Green else Color.Red)
                 Box {
                     IconButton(onClick = { expandedId = index }) {
                         Icon(Icons.Filled.MoreVert, contentDescription = "More")
