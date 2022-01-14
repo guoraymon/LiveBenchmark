@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
 
             var loadStartAt = 0L // 开始加载时间
             var bufferStartAt = 0L // 开始缓冲时间
+            var loadSuccess = false // 加载成功
 
             var loadTime by remember { mutableStateOf(0L) } //加载时长
             var bufferTime by remember { mutableStateOf(0L) } //缓冲时长
@@ -92,6 +93,7 @@ class MainActivity : ComponentActivity() {
                 ijkPlayer.setOnPreparedListener { mp: IMediaPlayer ->
                     Log.d(TAG, "ijkPlayer onPreparedListener: $mp")
 
+                    loadSuccess = true
                     loadTime = System.currentTimeMillis() - loadStartAt
                     // 记录加载时长
                     sourceViewModel.update(currSource.apply {
@@ -118,13 +120,12 @@ class MainActivity : ComponentActivity() {
                         }
                         // 结束缓冲
                         702 -> {
+                            bufferStartAt = 0
                             //记录缓冲时长
-                            if (currSource.id != 0) {
-                                bufferTime = System.currentTimeMillis() - bufferStartAt // 缓冲时长
-                                sourceViewModel.update(currSource.apply {
-                                    this.bufferTime = bufferTime
-                                })
-                            }
+                            bufferTime = System.currentTimeMillis() - bufferStartAt // 缓冲时长
+                            sourceViewModel.update(currSource.apply {
+                                this.bufferTime = bufferTime
+                            })
                         }
                     }
 
@@ -133,8 +134,7 @@ class MainActivity : ComponentActivity() {
                 // 监听播放失败
                 ijkPlayer.setOnErrorListener { _: IMediaPlayer, what, _ ->
                     sourceViewModel.update(currSource.apply {
-                        this.score = 0.0F
-                        this.over = true
+                        this.score = 0F
                     })
 
                     Toast.makeText(applicationContext, "播放失败 $what", Toast.LENGTH_SHORT).show()
@@ -146,15 +146,14 @@ class MainActivity : ComponentActivity() {
                         decodeFps = ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
                         outputFps = ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
 
-                        // 更新节目源加载时长
-                        if (currSource.id != 0) {
-                            playTime = System.currentTimeMillis() - loadStartAt //播放时长
+                        if (loadSuccess) {
+                            playTime = System.currentTimeMillis() - loadStartAt //刷新播放时长
                             if (bufferStartAt > 0) {
-                                bufferTime = System.currentTimeMillis() - bufferStartAt // 缓冲时长
+                                bufferTime = System.currentTimeMillis() - bufferStartAt //刷新缓冲时长
                             }
                             // 评分
                             val loadScore = (5000 - loadTime) / 5000F
-                            val playScore = (playTime - (loadTime + bufferTime)) / playTime.toFloat()
+                            val playScore = (playTime - bufferTime) / playTime.toFloat()
                             val score = ((loadScore * 300F).roundToInt() + (playScore * 700F).roundToInt()) / 10.0F
 
                             sourceViewModel.update(currSource.apply {
@@ -255,8 +254,9 @@ class MainActivity : ComponentActivity() {
                             }
                             SourceList(sourceViewModel) { source ->
                                 currSource = source
-                                mIjkPlayer.setUrl(source.src)
+                                loadSuccess = false
                                 loadStartAt = System.currentTimeMillis()
+                                mIjkPlayer.setUrl(source.src)
                             }
                         }
                     }
