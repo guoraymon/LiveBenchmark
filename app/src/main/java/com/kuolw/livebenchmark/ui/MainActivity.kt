@@ -19,6 +19,7 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -26,6 +27,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
 import com.kuolw.livebenchmark.db.entity.SourceEntity
@@ -134,6 +136,7 @@ class MainActivity : ComponentActivity() {
                 }
                 // 监听播放失败
                 ijkPlayer.setOnErrorListener { _: IMediaPlayer, what, _ ->
+                    Log.d(TAG, "onCreate: $currSource")
                     sourceViewModel.update(currSource.apply {
                         this.score = 0F
                         this.check = true
@@ -144,9 +147,22 @@ class MainActivity : ComponentActivity() {
                 }
                 Timer().schedule(object : TimerTask() {
                     override fun run() {
+//                        sourceViewModel.update(currSource.apply {
+//                            this.playTime = (Math.random() * 100L).toLong()
+//                            this.bufferTime = (Math.random() * 100L).toLong()
+//                            this.score = (Math.random() * 100F).toFloat()
+//                            this.check = true
+//                        })
+
                         bitRate = ijkPlayer.mMediaPlayer.bitRate
                         decodeFps = ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
                         outputFps = ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
+
+                        sourceViewModel.update(currSource.apply {
+                            this.playTime = playTime
+                            this.bufferTime = bufferTime
+                            this.score = (Math.random() * 100F).toFloat()
+                        })
 
                         if (loadSuccess) {
                             playTime = System.currentTimeMillis() - loadStartAt //刷新播放时长
@@ -158,11 +174,6 @@ class MainActivity : ComponentActivity() {
                             val playScore = (playTime - bufferTime) / playTime.toFloat()
                             val score = ((loadScore * 300F).roundToInt() + (playScore * 700F).roundToInt()) / 10.0F
 
-                            sourceViewModel.update(currSource.apply {
-                                this.playTime = playTime
-                                this.bufferTime = bufferTime
-                                this.score = score
-                            })
                         }
                     }
                 }, 0, 1000)
@@ -353,13 +364,18 @@ fun PlayerInfo(
 }
 
 @Composable
-fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit) {
+fun SourceList(
+    sourceViewModel: SourceViewModel,
+    onClick: (SourceEntity) -> Unit
+) {
     var clickId: Int? by remember { mutableStateOf(null) }
     var expandedId: Int? by remember { mutableStateOf(null) }
 
-    val sources = sourceViewModel.sources.collectAsState(arrayListOf())
+    val sources = sourceViewModel.sources
+
     LazyColumn {
-        itemsIndexed(sources.value) { index, source ->
+        itemsIndexed(sources) { index, source ->
+            var score = source.score
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -386,6 +402,7 @@ fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit
                         overflow = TextOverflow.Ellipsis
                     )
                 }
+                Text(text = "$score")
                 Text(if (source.check) source.score.toString() else "未测试", color = if (source.score >= 80) Color.Green else Color.Red)
                 Box {
                     IconButton(onClick = { expandedId = index }) {
@@ -395,7 +412,15 @@ fun SourceList(sourceViewModel: SourceViewModel, onClick: (SourceEntity) -> Unit
                         expanded = expandedId == index,
                         onDismissRequest = { expandedId = null }
                     ) {
-                        DropdownMenuItem(onClick = { }) {
+                        DropdownMenuItem(onClick = {
+                            sourceViewModel.update(source.apply {
+                                this.score = (Math.random() * 100F).toFloat()
+                            })
+                            expandedId = null
+                        }) {
+                            Text("Random")
+                        }
+                        DropdownMenuItem(onClick = {}) {
                             Text("Edit")
                         }
                         DropdownMenuItem(onClick = {
