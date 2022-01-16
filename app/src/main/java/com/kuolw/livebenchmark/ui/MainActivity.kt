@@ -19,7 +19,6 @@ import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,7 +26,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
 import com.kuolw.livebenchmark.db.entity.SourceEntity
@@ -80,7 +78,7 @@ class MainActivity : ComponentActivity() {
             var decodeFps by remember { mutableStateOf(0F) }
             var outputFps by remember { mutableStateOf(0F) }
 
-            var currSource by remember { mutableStateOf(SourceEntity(id = 0, name = "", src = "")) }
+            val currSource = remember { mutableStateOf<SourceEntity?>(null) }
 
             var loadStartAt = 0L // 开始加载时间
             var bufferStartAt = 0L // 开始缓冲时间
@@ -98,10 +96,12 @@ class MainActivity : ComponentActivity() {
                     loadSuccess = true
                     loadTime = System.currentTimeMillis() - loadStartAt
                     // 记录加载时长
-                    sourceViewModel.update(currSource.apply {
-                        this.loadTime = loadTime
-                        this.check = true
-                    })
+                    currSource.value?.let {
+                        sourceViewModel.update(it.apply {
+                            this.loadTime = loadTime
+                            this.check = true
+                        })
+                    }
 
                     width = mp.videoWidth
                     height = mp.videoHeight
@@ -126,9 +126,11 @@ class MainActivity : ComponentActivity() {
                             bufferStartAt = 0
                             //记录缓冲时长
                             bufferTime = System.currentTimeMillis() - bufferStartAt // 缓冲时长
-                            sourceViewModel.update(currSource.apply {
-                                this.bufferTime = bufferTime
-                            })
+                            currSource.value?.let {
+                                sourceViewModel.update(it.apply {
+                                    this.bufferTime = bufferTime
+                                })
+                            }
                         }
                     }
 
@@ -137,32 +139,21 @@ class MainActivity : ComponentActivity() {
                 // 监听播放失败
                 ijkPlayer.setOnErrorListener { _: IMediaPlayer, what, _ ->
                     Log.d(TAG, "onCreate: $currSource")
-                    sourceViewModel.update(currSource.apply {
-                        this.score = 0F
-                        this.check = true
-                    })
+                    currSource.value?.let {
+                        sourceViewModel.update(it.apply {
+                            this.score = 0F
+                            this.check = true
+                        })
+                    }
 
                     Toast.makeText(applicationContext, "播放失败 $what", Toast.LENGTH_SHORT).show()
                     true
                 }
                 Timer().schedule(object : TimerTask() {
                     override fun run() {
-//                        sourceViewModel.update(currSource.apply {
-//                            this.playTime = (Math.random() * 100L).toLong()
-//                            this.bufferTime = (Math.random() * 100L).toLong()
-//                            this.score = (Math.random() * 100F).toFloat()
-//                            this.check = true
-//                        })
-
                         bitRate = ijkPlayer.mMediaPlayer.bitRate
                         decodeFps = ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
                         outputFps = ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
-
-                        sourceViewModel.update(currSource.apply {
-                            this.playTime = playTime
-                            this.bufferTime = bufferTime
-                            this.score = (Math.random() * 100F).toFloat()
-                        })
 
                         if (loadSuccess) {
                             playTime = System.currentTimeMillis() - loadStartAt //刷新播放时长
@@ -174,6 +165,13 @@ class MainActivity : ComponentActivity() {
                             val playScore = (playTime - bufferTime) / playTime.toFloat()
                             val score = ((loadScore * 300F).roundToInt() + (playScore * 700F).roundToInt()) / 10.0F
 
+                            currSource.value?.let {
+                                sourceViewModel.update(it.apply {
+                                    this.playTime = playTime
+                                    this.bufferTime = bufferTime
+                                    this.score = score
+                                })
+                            }
                         }
                     }
                 }, 0, 1000)
@@ -266,9 +264,10 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                             SourceList(sourceViewModel) { source ->
-                                currSource = source
+                                currSource.value = source
                                 loadSuccess = false
                                 loadStartAt = System.currentTimeMillis()
+                                bufferStartAt = 0
                                 bufferTime = 0
                                 mIjkPlayer.setUrl(source.src)
                             }
@@ -371,11 +370,10 @@ fun SourceList(
     var clickId: Int? by remember { mutableStateOf(null) }
     var expandedId: Int? by remember { mutableStateOf(null) }
 
-    val sources = sourceViewModel.sources
+    val sources = sourceViewModel.sources.toList()
 
     LazyColumn {
         itemsIndexed(sources) { index, source ->
-            var score = source.score
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
@@ -402,7 +400,6 @@ fun SourceList(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                Text(text = "$score")
                 Text(if (source.check) source.score.toString() else "未测试", color = if (source.score >= 80) Color.Green else Color.Red)
                 Box {
                     IconButton(onClick = { expandedId = index }) {
@@ -412,14 +409,6 @@ fun SourceList(
                         expanded = expandedId == index,
                         onDismissRequest = { expandedId = null }
                     ) {
-                        DropdownMenuItem(onClick = {
-                            sourceViewModel.update(source.apply {
-                                this.score = (Math.random() * 100F).toFloat()
-                            })
-                            expandedId = null
-                        }) {
-                            Text("Random")
-                        }
                         DropdownMenuItem(onClick = {}) {
                             Text("Edit")
                         }

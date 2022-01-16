@@ -1,6 +1,5 @@
 package com.kuolw.livebenchmark.db.dao
 
-import androidx.lifecycle.LiveData
 import androidx.room.*
 import com.kuolw.livebenchmark.db.entity.SourceEntity
 

@@ -1,64 +1,56 @@
 package com.kuolw.livebenchmark.viewmodel
 
-import android.content.ContentValues.TAG
-import android.util.Log
-import androidx.compose.runtime.*
-import androidx.lifecycle.*
+import androidx.compose.runtime.mutableStateListOf
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.kuolw.livebenchmark.AppRepository
 import com.kuolw.livebenchmark.db.entity.SourceEntity
 import kotlinx.coroutines.launch
 
 class SourceViewModel(private val repository: AppRepository) : ViewModel() {
-    var sources by mutableStateOf(listOf<SourceEntity>())
-        private set
+    var sources = mutableStateListOf<SourceEntity>()
 
     init {
         viewModelScope.launch {
-            loadSources()
+            load()
         }
     }
 
-    private fun loadSources() {
+    private fun load() {
         viewModelScope.launch {
-            sources = repository.getAllSources()
+            sources.clear()
+            sources.addAll(repository.getAllSources())
         }
     }
 
     fun insert(source: SourceEntity) {
         viewModelScope.launch {
             repository.insertSource(source)
-            loadSources()
+            sources.add(source)
         }
     }
 
     fun update(source: SourceEntity) {
-        if (source.id == 0) {
-            loadSources()
-            return
-        }
         viewModelScope.launch {
             repository.updateSource(source)
-            val oldSources = sources
-            sources = listOf()
-            sources = oldSources.map { item ->
-                if (item.id == source.id)
-                    item.copy(score = source.score)
-                else
-                    item
+            sources.indexOf(source).let {
+                sources[it] = source
             }
-            Log.d(TAG, "test: $sources")
         }
     }
 
     fun delete(source: SourceEntity) {
         viewModelScope.launch {
             repository.deleteSource(source)
+            sources.remove(source)
         }
     }
 
     fun deleteAll() {
         viewModelScope.launch {
             repository.deleteAllSource()
+            sources.removeAll(sources)
         }
     }
 }
