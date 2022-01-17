@@ -8,14 +8,7 @@ import com.kuolw.livebenchmark.db.entity.SourceEntity
 import kotlin.math.roundToInt
 
 class PlayViewModel(private val sourceViewModel: SourceViewModel) : ViewModel() {
-    var currIndex: MutableState<Int?> = mutableStateOf(null)
     var currSource: MutableState<SourceEntity?> = mutableStateOf(null)
-
-    var width = mutableStateOf(0)
-    var height = mutableStateOf(0)
-    var format = mutableStateOf("")
-    var videoDecoder = mutableStateOf("")
-    var audioDecoder = mutableStateOf("")
 
     var loadTime = mutableStateOf(0L)  //加载时长
     var bufferTime = mutableStateOf(0L)  //缓冲时长
@@ -23,11 +16,6 @@ class PlayViewModel(private val sourceViewModel: SourceViewModel) : ViewModel() 
     var playTime = mutableStateOf(0L)  //播放时长
 
     fun reset() {
-        width.value = 0
-        height.value = 0
-        format.value = ""
-        videoDecoder.value = ""
-        audioDecoder.value = ""
         loadTime.value = 0L
         bufferTime.value = 0L
         currBufferTime.value = 0L

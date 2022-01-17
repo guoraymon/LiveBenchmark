@@ -76,7 +76,6 @@ class MainActivity : ComponentActivity() {
             var loadSuccess = false // 加载成功
 
             val onClick = { source: SourceEntity, index: Int ->
-                playViewModel.currIndex.value = index
                 playViewModel.currSource.value = source
                 playViewModel.reset()
 
@@ -92,16 +91,7 @@ class MainActivity : ComponentActivity() {
                 ijkPlayer.setOnPreparedListener { mp: IMediaPlayer ->
                     loadSuccess = true
                     val loadTime = System.currentTimeMillis() - loadStartAt
-
-                    with(playViewModel) {
-                        this.loadTime.value = loadTime
-                        this.width.value = mp.videoWidth
-                        this.height.value = mp.videoHeight
-                        this.format.value = mp.mediaInfo.mMeta.mFormat
-                        this.videoDecoder.value = mp.mediaInfo.mVideoDecoderImpl
-                        this.audioDecoder.value = mp.mediaInfo.mAudioDecoderImpl
-                    }
-
+                    playViewModel.loadTime.value = loadTime
                     playViewModel.getCurrSource()?.let {
                         sourceViewModel.update(it.apply {
                             this.check = true
