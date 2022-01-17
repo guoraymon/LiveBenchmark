@@ -1,11 +1,16 @@
 package com.kuolw.livebenchmark.viewmodel
 
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.kuolw.livebenchmark.db.entity.SourceEntity
 import kotlin.math.roundToInt
 
-class PlayViewModel : ViewModel() {
+class PlayViewModel(private val sourceViewModel: SourceViewModel) : ViewModel() {
+    var currIndex: MutableState<Int?> = mutableStateOf(null)
+    var currSource: MutableState<SourceEntity?> = mutableStateOf(null)
+
     var width = mutableStateOf(0)
     var height = mutableStateOf(0)
     var format = mutableStateOf("")
@@ -29,6 +34,10 @@ class PlayViewModel : ViewModel() {
         playTime.value = 0L
     }
 
+    fun getCurrSource(): SourceEntity? {
+        return currSource.value
+    }
+
     fun getSumBufferTime(): Long {
         return bufferTime.value + currBufferTime.value
     }
@@ -40,11 +49,11 @@ class PlayViewModel : ViewModel() {
     }
 }
 
-class PlayViewModelFactory : ViewModelProvider.Factory {
+class PlayViewModelFactory(private val sourceViewModel: SourceViewModel) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PlayViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return PlayViewModel() as T
+            return PlayViewModel(sourceViewModel) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

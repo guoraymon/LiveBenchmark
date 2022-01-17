@@ -1,10 +1,7 @@
 package com.kuolw.livebenchmark.ui
 
-import android.content.ContentValues.TAG
 import android.net.Uri
 import android.os.Bundle
-import android.text.TextUtils.isEmpty
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -47,7 +44,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val playViewModel: PlayViewModel by viewModels {
-        PlayViewModelFactory()
+        PlayViewModelFactory(sourceViewModel)
     }
 
     private val importActivityResult =
@@ -74,20 +71,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val currSource = remember { mutableStateOf<SourceEntity?>(null) }
-
             var loadStartAt = 0L // 开始加载时间
             var bufferStartAt = 0L // 开始缓冲时间
             var loadSuccess = false // 加载成功
 
-            val onClick = { source: SourceEntity ->
+            val onClick = { source: SourceEntity, index: Int ->
+                playViewModel.currIndex.value = index
+                playViewModel.currSource.value = source
+                playViewModel.reset()
+
                 loadStartAt = System.currentTimeMillis()
                 bufferStartAt = 0
                 loadSuccess = false
 
-                playViewModel.reset()
-
-                currSource.value = source
                 mIjkPlayer.setUrl(source.src)
             }
 
@@ -106,7 +102,7 @@ class MainActivity : ComponentActivity() {
                         this.audioDecoder.value = mp.mediaInfo.mAudioDecoderImpl
                     }
 
-                    currSource.value?.let {
+                    playViewModel.getCurrSource()?.let {
                         sourceViewModel.update(it.apply {
                             this.check = true
                             this.loadTime = loadTime
@@ -137,7 +133,7 @@ class MainActivity : ComponentActivity() {
                             bufferStartAt = 0
                             playViewModel.currBufferTime.value = 0
 
-                            currSource.value?.let {
+                            playViewModel.getCurrSource()?.let {
                                 sourceViewModel.update(it.apply {
                                     this.bufferTime += currBufferTime
                                 })
@@ -148,8 +144,7 @@ class MainActivity : ComponentActivity() {
                 }
                 // 监听播放失败
                 ijkPlayer.setOnErrorListener { _: IMediaPlayer, what, _ ->
-                    Log.d(TAG, "onCreate: $currSource")
-                    currSource.value?.let {
+                    playViewModel.getCurrSource()?.let {
                         sourceViewModel.update(it.apply {
                             this.check = true
                             this.score = 0F
@@ -168,7 +163,7 @@ class MainActivity : ComponentActivity() {
                                 playViewModel.currBufferTime.value = System.currentTimeMillis() - bufferStartAt //刷新缓冲时长
                             }
 
-                            currSource.value?.let {
+                            playViewModel.getCurrSource()?.let {
                                 sourceViewModel.update(it.apply {
                                     this.playTime = playTime
                                     this.bufferTime = playViewModel.getSumBufferTime()
@@ -298,27 +293,32 @@ fun PlayerView(init: ((IjkPlayer) -> Unit)) {
 
 @Composable
 fun PlayerInfo(playViewModel: PlayViewModel) {
+    val currSource = playViewModel.getCurrSource()
+    val width = (currSource?.width ?: 0).toString()
+    val height = (currSource?.height ?: 0).toString()
+    val format = currSource?.format ?: ""
+    val videoDecoder = currSource?.videoDecoder ?: ""
+    val audioDecoder = currSource?.audioDecoder ?: ""
+    val decoder = if (videoDecoder != "") "$videoDecoder,$audioDecoder" else ""
+
     Column(
         Modifier.background(Color(0x88EEEEEE))
     ) {
         Row {
             Text("Width: ", color = Color.Red)
-            Text(playViewModel.width.value.toString(), color = Color.Red)
+            Text(width, color = Color.Red)
         }
         Row {
             Text("Height: ", color = Color.Red)
-            Text(playViewModel.height.value.toString(), color = Color.Red)
+            Text(height, color = Color.Red)
         }
         Row {
             Text("Format: ", color = Color.Red)
-            Text(playViewModel.format.value, color = Color.Red)
+            Text(format, color = Color.Red)
         }
         Row {
             Text("Decoder: ", color = Color.Red)
-            Text(
-                playViewModel.videoDecoder.value + (if (isEmpty(playViewModel.videoDecoder.value)) "" else ",") + playViewModel.audioDecoder.value,
-                color = Color.Red
-            )
+            Text(decoder, color = Color.Red)
         }
         Column(
             Modifier.padding(top = 16.dp)
@@ -339,7 +339,7 @@ fun PlayerInfo(playViewModel: PlayViewModel) {
 @Composable
 fun SourceList(
     sourceViewModel: SourceViewModel,
-    onClick: (SourceEntity) -> Unit
+    onClick: (SourceEntity, index: Int) -> Unit
 ) {
     var clickId: Int? by remember { mutableStateOf(null) }
     var expandedId: Int? by remember { mutableStateOf(null) }
@@ -354,7 +354,7 @@ fun SourceList(
                 modifier = Modifier
                     .clickable(onClick = {
                         clickId = index
-                        onClick(source)
+                        onClick(source, index)
                     })
                     .background(if (clickId == index) Color.LightGray else Color.White)
                     .padding(4.dp)
