@@ -30,6 +30,8 @@ import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
 import com.kuolw.livebenchmark.db.entity.SourceEntity
 import com.kuolw.livebenchmark.ui.theme.AppTheme
+import com.kuolw.livebenchmark.viewmodel.PlayViewModel
+import com.kuolw.livebenchmark.viewmodel.PlayViewModelFactory
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
 import net.bjoernpetersen.m3u.M3uParser
@@ -38,11 +40,14 @@ import tv.danmaku.ijk.media.player.IMediaPlayer
 import java.io.InputStreamReader
 import java.text.DecimalFormat
 import java.util.*
-import kotlin.math.roundToInt
 
 class MainActivity : ComponentActivity() {
     private val sourceViewModel: SourceViewModel by viewModels {
         SourceViewModelFactory((application as MainApplication).repository)
+    }
+
+    private val playViewModel: PlayViewModel by viewModels {
+        PlayViewModelFactory()
     }
 
     private val importActivityResult =
@@ -69,53 +74,50 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            var width by remember { mutableStateOf(0) }
-            var height by remember { mutableStateOf(0) }
-            var format by remember { mutableStateOf("") }
-            var videoDecoder by remember { mutableStateOf("") }
-            var audioDecoder by remember { mutableStateOf("") }
-            var bitRate by remember { mutableStateOf(0L) }
-            var decodeFps by remember { mutableStateOf(0F) }
-            var outputFps by remember { mutableStateOf(0F) }
-
             val currSource = remember { mutableStateOf<SourceEntity?>(null) }
 
             var loadStartAt = 0L // 开始加载时间
             var bufferStartAt = 0L // 开始缓冲时间
             var loadSuccess = false // 加载成功
 
-            var loadTime by remember { mutableStateOf(0L) } //加载时长
-            var bufferTime by remember { mutableStateOf(0L) } //缓冲时长
-            var playTime by remember { mutableStateOf(0L) } //播放时长
+            val onClick = { source: SourceEntity ->
+                loadStartAt = System.currentTimeMillis()
+                bufferStartAt = 0
+                loadSuccess = false
+
+                playViewModel.reset()
+
+                currSource.value = source
+                mIjkPlayer.setUrl(source.src)
+            }
 
             val initIjkPlayer = { ijkPlayer: IjkPlayer ->
                 // 监听预备
                 ijkPlayer.setOnPreparedListener { mp: IMediaPlayer ->
-                    Log.d(TAG, "ijkPlayer onPreparedListener: $mp")
-
                     loadSuccess = true
-                    loadTime = System.currentTimeMillis() - loadStartAt
-                    // 记录加载时长
+                    val loadTime = System.currentTimeMillis() - loadStartAt
+
+                    playViewModel.loadTime.value = loadTime
+                    playViewModel.width.value = mp.videoWidth
+                    playViewModel.height.value = mp.videoHeight
+                    playViewModel.format.value = mp.mediaInfo.mMeta.mFormat
+                    playViewModel.videoDecoder.value = mp.mediaInfo.mVideoDecoderImpl
+                    playViewModel.audioDecoder.value = mp.mediaInfo.mAudioDecoderImpl
+
                     currSource.value?.let {
                         sourceViewModel.update(it.apply {
-                            this.loadTime = loadTime
                             this.check = true
+                            this.loadTime = loadTime
+                            this.width = mp.videoWidth
+                            this.height = mp.videoHeight
+                            this.format = mp.mediaInfo.mMeta.mFormat
+                            this.videoDecoder = mp.mediaInfo.mVideoDecoderImpl
+                            this.audioDecoder = mp.mediaInfo.mAudioDecoderImpl
                         })
                     }
-
-                    width = mp.videoWidth
-                    height = mp.videoHeight
-                    format = mp.mediaInfo.mMeta.mFormat
-                    videoDecoder = mp.mediaInfo.mVideoDecoderImpl
-                    audioDecoder = mp.mediaInfo.mAudioDecoderImpl
                 }
                 // 监听播放信息
-                ijkPlayer.setOnInfoListener { mp, what, extra ->
-                    Log.d(
-                        TAG,
-                        "ijkPlayer setOnInfoListener: $mp, $what, $extra"
-                    )
-
+                ijkPlayer.setOnInfoListener { _, what, _ ->
                     when (what) {
                         // 开始缓冲
                         701 -> {
@@ -123,17 +125,23 @@ class MainActivity : ComponentActivity() {
                         }
                         // 结束缓冲
                         702 -> {
+                            val currBufferTime = System.currentTimeMillis() - bufferStartAt
+
+                            // 记录缓冲时长
+                            playViewModel.currBufferTime.value = currBufferTime // 当前缓冲时长
+                            playViewModel.bufferTime.value += currBufferTime // 缓冲时长
+
+                            // 缓存结束
                             bufferStartAt = 0
-                            //记录缓冲时长
-                            bufferTime = System.currentTimeMillis() - bufferStartAt // 缓冲时长
+                            playViewModel.currBufferTime.value = 0
+
                             currSource.value?.let {
                                 sourceViewModel.update(it.apply {
-                                    this.bufferTime = bufferTime
+                                    this.bufferTime += currBufferTime
                                 })
                             }
                         }
                     }
-
                     true
                 }
                 // 监听播放失败
@@ -141,8 +149,8 @@ class MainActivity : ComponentActivity() {
                     Log.d(TAG, "onCreate: $currSource")
                     currSource.value?.let {
                         sourceViewModel.update(it.apply {
-                            this.score = 0F
                             this.check = true
+                            this.score = 0F
                         })
                     }
 
@@ -151,25 +159,18 @@ class MainActivity : ComponentActivity() {
                 }
                 Timer().schedule(object : TimerTask() {
                     override fun run() {
-                        bitRate = ijkPlayer.mMediaPlayer.bitRate
-                        decodeFps = ijkPlayer.mMediaPlayer.videoDecodeFramesPerSecond
-                        outputFps = ijkPlayer.mMediaPlayer.videoOutputFramesPerSecond
-
                         if (loadSuccess) {
-                            playTime = System.currentTimeMillis() - loadStartAt //刷新播放时长
+                            val playTime = System.currentTimeMillis() - loadStartAt
+                            playViewModel.playTime.value = playTime // 刷新播放时长
                             if (bufferStartAt > 0) {
-                                bufferTime = System.currentTimeMillis() - bufferStartAt //刷新缓冲时长
+                                playViewModel.currBufferTime.value = System.currentTimeMillis() - bufferStartAt //刷新缓冲时长
                             }
-                            // 评分
-                            val loadScore = (5000 - loadTime) / 5000F
-                            val playScore = (playTime - bufferTime) / playTime.toFloat()
-                            val score = ((loadScore * 300F).roundToInt() + (playScore * 700F).roundToInt()) / 10.0F
 
                             currSource.value?.let {
                                 sourceViewModel.update(it.apply {
                                     this.playTime = playTime
-                                    this.bufferTime = bufferTime
-                                    this.score = score
+                                    this.bufferTime = playViewModel.getSumBufferTime()
+                                    this.score = playViewModel.getScore()
                                 })
                             }
                         }
@@ -249,28 +250,9 @@ class MainActivity : ComponentActivity() {
                         Column {
                             Box {
                                 PlayerView(initIjkPlayer)
-                                PlayerInfo(
-                                    width,
-                                    height,
-                                    format,
-                                    videoDecoder,
-                                    audioDecoder,
-                                    bitRate,
-                                    decodeFps,
-                                    outputFps,
-                                    loadTime,
-                                    bufferTime,
-                                    playTime,
-                                )
+                                PlayerInfo(playViewModel)
                             }
-                            SourceList(sourceViewModel) { source ->
-                                currSource.value = source
-                                loadSuccess = false
-                                loadStartAt = System.currentTimeMillis()
-                                bufferStartAt = 0
-                                bufferTime = 0
-                                mIjkPlayer.setUrl(source.src)
-                            }
+                            SourceList(sourceViewModel, onClick)
                         }
                     }
                 }
@@ -295,7 +277,7 @@ fun PlayerView(init: ((IjkPlayer) -> Unit)) {
         modifier = Modifier
             .background(Color.Black)
             .fillMaxWidth()
-            .aspectRatio(4 / 3f),
+            .aspectRatio(16 / 9f),
         factory = { context ->
             IjkPlayer(context).apply(init)
         },
@@ -303,60 +285,40 @@ fun PlayerView(init: ((IjkPlayer) -> Unit)) {
 }
 
 @Composable
-fun PlayerInfo(
-    width: Int,
-    height: Int,
-    format: String,
-    videoDecoder: String,
-    audioDecoder: String,
-    bitRate: Long,
-    decodeFps: Float,
-    outputFps: Float,
-    loadTime: Long,
-    bufferTime: Long,
-    playTime: Long,
-) {
+fun PlayerInfo(playViewModel: PlayViewModel) {
     Column(
         Modifier.background(Color(0x88EEEEEE))
     ) {
         Row {
             Text("Width: ", color = Color.Red)
-            Text(width.toString(), color = Color.Red)
+            Text(playViewModel.width.value.toString(), color = Color.Red)
         }
         Row {
             Text("Height: ", color = Color.Red)
-            Text(height.toString(), color = Color.Red)
+            Text(playViewModel.height.value.toString(), color = Color.Red)
         }
         Row {
             Text("Format: ", color = Color.Red)
-            Text(format, color = Color.Red)
+            Text(playViewModel.format.value, color = Color.Red)
         }
         Row {
             Text("Decoder: ", color = Color.Red)
             Text(
-                videoDecoder + (if (isEmpty(videoDecoder)) "" else ",") + audioDecoder,
+                playViewModel.videoDecoder.value + (if (isEmpty(playViewModel.videoDecoder.value)) "" else ",") + playViewModel.audioDecoder.value,
                 color = Color.Red
             )
-        }
-        Row {
-            Text("BitRate: ", color = Color.Red)
-            Text(bitRate.toString(), color = Color.Red)
-        }
-        Row {
-            Text("Fps: ", color = Color.Red)
-            Text("%.1f".format(decodeFps) + "," + "%.1f".format(outputFps), color = Color.Red)
         }
         Column(
             Modifier.padding(top = 16.dp)
         ) {
             Row {
-                Text("loadTime: $loadTime ms", color = Color.Red)
+                Text("loadTime: ${playViewModel.loadTime.value} ms", color = Color.Red)
             }
             Row {
-                Text("bufferTime: ${DecimalFormat("#0.0").format((bufferTime / 1000.0))} s", color = Color.Red)
+                Text("bufferTime: ${DecimalFormat("#0.0").format((playViewModel.getSumBufferTime() / 1000.0))} s", color = Color.Red)
             }
             Row {
-                Text("playTime: ${DecimalFormat("#0").format((playTime / 1000.0))} s", color = Color.Red)
+                Text("playTime: ${DecimalFormat("#0").format((playViewModel.playTime.value / 1000.0))} s", color = Color.Red)
             }
         }
     }

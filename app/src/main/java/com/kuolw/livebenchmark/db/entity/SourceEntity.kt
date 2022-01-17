@@ -15,6 +15,21 @@ data class SourceEntity(
     @ColumnInfo(name = "src")
     val src: String,
 
+    @ColumnInfo(name = "width")
+    var width: Int = 0,
+
+    @ColumnInfo(name = "height")
+    var height: Int = 0,
+
+    @ColumnInfo(name = "format")
+    var format: String = "",
+
+    @ColumnInfo(name = "video_decoder")
+    var videoDecoder: String = "",
+
+    @ColumnInfo(name = "audio_decoder")
+    var audioDecoder: String = "",
+
     @ColumnInfo(name = "load_time")
     var loadTime: Long = 0, // 加载时长
 

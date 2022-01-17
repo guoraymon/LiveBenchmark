@@ -2,11 +2,11 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "bbcccfe5b3bc7ed7d7f1a63d667de2a2",
+    "identityHash": "9614d5f4853d85ecea5d1b558f4a7397",
     "entities": [
       {
         "tableName": "sources",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `src` TEXT NOT NULL, `load_time` INTEGER NOT NULL, `buffer_time` INTEGER NOT NULL, `play_time` INTEGER NOT NULL, `score` REAL NOT NULL, `check` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `src` TEXT NOT NULL, `width` INTEGER NOT NULL, `height` INTEGER NOT NULL, `format` TEXT NOT NULL, `video_decoder` TEXT NOT NULL, `audio_decoder` TEXT NOT NULL, `load_time` INTEGER NOT NULL, `buffer_time` INTEGER NOT NULL, `play_time` INTEGER NOT NULL, `score` REAL NOT NULL, `check` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "id",
@@ -23,6 +23,36 @@
           {
             "fieldPath": "src",
             "columnName": "src",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "width",
+            "columnName": "width",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "height",
+            "columnName": "height",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "format",
+            "columnName": "format",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "videoDecoder",
+            "columnName": "video_decoder",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "audioDecoder",
+            "columnName": "audio_decoder",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -70,7 +100,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bbcccfe5b3bc7ed7d7f1a63d667de2a2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9614d5f4853d85ecea5d1b558f4a7397')"
     ]
   }
 }
