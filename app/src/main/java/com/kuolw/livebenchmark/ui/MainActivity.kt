@@ -97,12 +97,14 @@ class MainActivity : ComponentActivity() {
                     loadSuccess = true
                     val loadTime = System.currentTimeMillis() - loadStartAt
 
-                    playViewModel.loadTime.value = loadTime
-                    playViewModel.width.value = mp.videoWidth
-                    playViewModel.height.value = mp.videoHeight
-                    playViewModel.format.value = mp.mediaInfo.mMeta.mFormat
-                    playViewModel.videoDecoder.value = mp.mediaInfo.mVideoDecoderImpl
-                    playViewModel.audioDecoder.value = mp.mediaInfo.mAudioDecoderImpl
+                    with(playViewModel) {
+                        this.loadTime.value = loadTime
+                        this.width.value = mp.videoWidth
+                        this.height.value = mp.videoHeight
+                        this.format.value = mp.mediaInfo.mMeta.mFormat
+                        this.videoDecoder.value = mp.mediaInfo.mVideoDecoderImpl
+                        this.audioDecoder.value = mp.mediaInfo.mAudioDecoderImpl
+                    }
 
                     currSource.value?.let {
                         sourceViewModel.update(it.apply {
@@ -186,17 +188,9 @@ class MainActivity : ComponentActivity() {
                     val deleteALLDialog = remember { mutableStateOf(false) }
                     if (deleteALLDialog.value) {
                         AlertDialog(
-                            title = {
-                                Text(text = "Delete All")
-                            },
-                            text = {
-                                Text(
-                                    "Delete All? "
-                                )
-                            },
-                            onDismissRequest = {
-                                deleteALLDialog.value = false
-                            },
+                            title = { Text(text = "Delete All") },
+                            text = { Text("Delete All? ") },
+                            onDismissRequest = { deleteALLDialog.value = false },
                             confirmButton = {
                                 TextButton(
                                     onClick = {
@@ -212,37 +206,13 @@ class MainActivity : ComponentActivity() {
 
                     Scaffold(
                         topBar = {
-                            TopAppBar(
-                                title = { Text("LiveBenchmark") },
-                                actions = {
-                                    var expanded by remember { mutableStateOf(false) }
-                                    Box {
-                                        IconButton(onClick = { expanded = true }) {
-                                            Icon(Icons.Filled.MoreVert, contentDescription = "More")
-                                        }
-                                        DropdownMenu(
-                                            expanded = expanded,
-                                            onDismissRequest = { expanded = false }
-                                        ) {
-                                            DropdownMenuItem(onClick = {
-                                                importActivityResult.launch(arrayOf("audio/x-mpegurl"))
-                                                expanded = false
-                                            }) {
-                                                Text("Import")
-                                            }
-                                            DropdownMenuItem(onClick = {
-                                                expanded = false
-                                            }) {
-                                                Text("Export")
-                                            }
-                                            DropdownMenuItem(onClick = {
-                                                deleteALLDialog.value = true
-                                                expanded = false
-                                            }) {
-                                                Text("Delete All")
-                                            }
-                                        }
-                                    }
+                            TopBar(
+                                onImport = {
+                                    importActivityResult.launch(arrayOf("audio/x-mpegurl"))
+                                },
+                                onExport = {},
+                                onDeleteAll = {
+                                    deleteALLDialog.value = true
                                 }
                             )
                         }
@@ -269,6 +239,48 @@ class MainActivity : ComponentActivity() {
         super.onRestart()
         mIjkPlayer.start()
     }
+}
+
+@Composable
+fun TopBar(
+    onImport: () -> Unit,
+    onExport: () -> Unit,
+    onDeleteAll: () -> Unit,
+) {
+    TopAppBar(
+        title = { Text("LiveBenchmark") },
+        actions = {
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    DropdownMenuItem(onClick = {
+                        expanded = false
+                        onImport()
+                    }) {
+                        Text("Import")
+                    }
+                    DropdownMenuItem(onClick = {
+                        expanded = false
+                        onExport()
+                    }) {
+                        Text("Export")
+                    }
+                    DropdownMenuItem(onClick = {
+                        expanded = false
+                        onDeleteAll()
+                    }) {
+                        Text("Delete All")
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable
