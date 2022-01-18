@@ -7,7 +7,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.kuolw.livebenchmark.db.entity.SourceEntity
 import kotlin.math.roundToInt
 
-class PlayViewModel(private val sourceViewModel: SourceViewModel) : ViewModel() {
+class PlayViewModel : ViewModel() {
     var currSource: MutableState<SourceEntity?> = mutableStateOf(null)
 
     var loadTime = mutableStateOf(0L)  //加载时长
@@ -37,11 +37,11 @@ class PlayViewModel(private val sourceViewModel: SourceViewModel) : ViewModel() 
     }
 }
 
-class PlayViewModelFactory(private val sourceViewModel: SourceViewModel) : ViewModelProvider.Factory {
+class PlayViewModelFactory : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(PlayViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return PlayViewModel(sourceViewModel) as T
+            return PlayViewModel() as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

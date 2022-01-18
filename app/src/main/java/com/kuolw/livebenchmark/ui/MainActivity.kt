@@ -23,7 +23,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.github.doyaaaaaken.kotlincsv.client.KotlinCsvExperimental
 import com.github.doyaaaaaken.kotlincsv.dsl.csvWriter
 import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
@@ -34,11 +33,7 @@ import com.kuolw.livebenchmark.viewmodel.PlayViewModelFactory
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
 import net.bjoernpetersen.m3u.M3uParser
-import net.bjoernpetersen.m3u.model.M3uEntry
 import tv.danmaku.ijk.media.player.IMediaPlayer
-import java.io.BufferedWriter
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
 import java.text.DecimalFormat
 import java.util.*
 
@@ -48,7 +43,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private val playViewModel: PlayViewModel by viewModels {
-        PlayViewModelFactory(sourceViewModel)
+        PlayViewModelFactory()
     }
 
     /**
@@ -128,7 +123,7 @@ class MainActivity : ComponentActivity() {
             var bufferStartAt = 0L // 开始缓冲时间
             var loadSuccess = false // 加载成功
 
-            val onClick = { source: SourceEntity, index: Int ->
+            val onClick = { source: SourceEntity ->
                 playViewModel.currSource.value = source
                 playViewModel.reset()
 
@@ -384,7 +379,7 @@ fun PlayerInfo(playViewModel: PlayViewModel) {
 @Composable
 fun SourceList(
     sourceViewModel: SourceViewModel,
-    onClick: (SourceEntity, index: Int) -> Unit
+    onClick: (SourceEntity) -> Unit
 ) {
     var clickId: Int? by remember { mutableStateOf(null) }
     var expandedId: Int? by remember { mutableStateOf(null) }
@@ -399,7 +394,7 @@ fun SourceList(
                 modifier = Modifier
                     .clickable(onClick = {
                         clickId = index
-                        onClick(source, index)
+                        onClick(source)
                     })
                     .background(if (clickId == index) Color.LightGray else Color.White)
                     .padding(4.dp)
