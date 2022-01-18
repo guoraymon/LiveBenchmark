@@ -34,7 +34,9 @@ import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
 import net.bjoernpetersen.m3u.M3uParser
 import net.bjoernpetersen.m3u.model.M3uEntry
 import tv.danmaku.ijk.media.player.IMediaPlayer
+import java.io.BufferedWriter
 import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import java.text.DecimalFormat
 import java.util.*
 
@@ -65,6 +67,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+
+    private val export = registerForActivityResult(ActivityResultContracts.CreateDocument()) { uri: Uri? ->
+        uri?.let {
+            contentResolver.openOutputStream(uri).use { outputStream ->
+                OutputStreamWriter(outputStream).use { outputStreamWriter ->
+                    BufferedWriter(outputStreamWriter).use { bufferedWriter ->
+                        bufferedWriter.write("name,src,width,height,format,videoDecoder,audioDecoder,loadTime,bufferTime,score\n")
+                        sourceViewModel.sources.forEach {
+                            bufferedWriter.write("${it.name},${it.src},${it.width},${it.height},\"${it.format}\",${it.videoDecoder},${it.audioDecoder},${it.loadTime},${it.bufferTime},${it.score}\n")
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     private lateinit var mIjkPlayer: IjkPlayer
 
@@ -195,7 +212,9 @@ class MainActivity : ComponentActivity() {
                                 onImport = {
                                     importActivityResult.launch(arrayOf("audio/x-mpegurl"))
                                 },
-                                onExport = {},
+                                onExport = {
+                                    export.launch("test.csv")
+                                },
                                 onDeleteAll = {
                                     deleteALLDialog.value = true
                                 }
