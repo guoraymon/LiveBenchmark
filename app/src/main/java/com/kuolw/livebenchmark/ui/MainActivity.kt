@@ -23,6 +23,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.github.doyaaaaaken.kotlincsv.client.KotlinCsvExperimental
+import com.github.doyaaaaaken.kotlincsv.dsl.csvWriter
 import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
 import com.kuolw.livebenchmark.db.entity.SourceEntity
@@ -68,16 +70,45 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    /**
+     * Intent 数据导出
+     */
     private val export = registerForActivityResult(ActivityResultContracts.CreateDocument()) { uri: Uri? ->
-        uri?.let {
-            contentResolver.openOutputStream(uri).use { outputStream ->
-                OutputStreamWriter(outputStream).use { outputStreamWriter ->
-                    BufferedWriter(outputStreamWriter).use { bufferedWriter ->
-                        bufferedWriter.write("name,src,width,height,format,videoDecoder,audioDecoder,loadTime,bufferTime,score\n")
-                        sourceViewModel.sources.forEach {
-                            bufferedWriter.write("${it.name},${it.src},${it.width},${it.height},\"${it.format}\",${it.videoDecoder},${it.audioDecoder},${it.loadTime},${it.bufferTime},${it.score}\n")
-                        }
-                    }
+        if (uri === null) {
+            return@registerForActivityResult
+        }
+        contentResolver.openOutputStream(uri).use { outputStream ->
+            if (outputStream == null) {
+                return@registerForActivityResult
+            }
+            csvWriter().open(outputStream) {
+                writeRow(
+                    "name",
+                    "src",
+                    "width",
+                    "height",
+                    "format",
+                    "videoDecoder",
+                    "audioDecoder",
+                    "loadTime",
+                    "bufferTime",
+                    "playTime",
+                    "score"
+                )
+                sourceViewModel.sources.forEach {
+                    writeRow(
+                        it.name,
+                        it.src,
+                        it.width,
+                        it.height,
+                        it.format,
+                        it.videoDecoder,
+                        it.audioDecoder,
+                        it.loadTime,
+                        it.bufferTime,
+                        it.playTime,
+                        it.score
+                    )
                 }
             }
         }
