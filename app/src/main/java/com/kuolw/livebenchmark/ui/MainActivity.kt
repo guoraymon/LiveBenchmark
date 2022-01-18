@@ -51,27 +51,32 @@ class MainActivity : ComponentActivity() {
         PlayViewModelFactory(sourceViewModel)
     }
 
-    private val importActivityResult =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri !== null) {
-                contentResolver.openInputStream(uri).use { inputStream ->
-                    val m3uReader: InputStreamReader = inputStream!!.reader()
-                    val m3uEntries: List<M3uEntry> = M3uParser.parse(m3uReader)
-                    for (m3uEntry in m3uEntries) {
-                        sourceViewModel.insert(
-                            SourceEntity(
-                                id = 0,
-                                name = m3uEntry.title!!,
-                                src = m3uEntry.location.toString()
-                            )
+    /**
+     * 数据导入
+     */
+    private val import = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        if (uri == null) {
+            return@registerForActivityResult
+        }
+        contentResolver.openInputStream(uri).use { inputStream ->
+            if (inputStream == null) {
+                return@registerForActivityResult
+            }
+            inputStream.reader().use { inputStreamReader ->
+                M3uParser.parse(inputStreamReader).forEach {
+                    sourceViewModel.insert(
+                        SourceEntity(
+                            name = it.title!!,
+                            src = it.location.toString()
                         )
-                    }
+                    )
                 }
             }
         }
+    }
 
     /**
-     * Intent 数据导出
+     * 数据导出
      */
     private val export = registerForActivityResult(ActivityResultContracts.CreateDocument()) { uri: Uri? ->
         if (uri === null) {
@@ -241,10 +246,10 @@ class MainActivity : ComponentActivity() {
                         topBar = {
                             TopBar(
                                 onImport = {
-                                    importActivityResult.launch(arrayOf("audio/x-mpegurl"))
+                                    import.launch(arrayOf("audio/x-mpegurl"))
                                 },
                                 onExport = {
-                                    export.launch("test.csv")
+                                    export.launch("导出节目源.csv")
                                 },
                                 onDeleteAll = {
                                     deleteALLDialog.value = true

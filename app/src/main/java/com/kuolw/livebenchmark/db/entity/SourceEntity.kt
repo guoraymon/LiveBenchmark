@@ -7,7 +7,7 @@ import androidx.room.PrimaryKey
 @Entity(tableName = "sources")
 data class SourceEntity(
     @PrimaryKey(autoGenerate = true)
-    var id: Int,
+    var id: Int = 0,
 
     @ColumnInfo(name = "name")
     val name: String,
