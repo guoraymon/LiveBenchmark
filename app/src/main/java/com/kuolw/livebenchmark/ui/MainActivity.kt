@@ -134,6 +134,17 @@ class MainActivity : ComponentActivity() {
                 mIjkPlayer.setUrl(source.src)
             }
 
+            val playNext = {
+                val sources = sourceViewModel.sources
+                val index = sources.indexOf(playViewModel.currSource.value)
+                val nextSource = sources.elementAtOrElse(index + 1, defaultValue = {
+                    sources.firstOrNull()
+                })
+                if (nextSource != null) {
+                    onClick(nextSource)
+                }
+            }
+
             val initIjkPlayer = { ijkPlayer: IjkPlayer ->
                 // 监听预备
                 ijkPlayer.setOnPreparedListener { mp: IMediaPlayer ->
@@ -187,6 +198,7 @@ class MainActivity : ComponentActivity() {
                             this.check = true
                             this.score = 0F
                         })
+                        playNext() // 播放下一个源
                     }
 
                     Toast.makeText(applicationContext, "播放失败 $what", Toast.LENGTH_SHORT).show()
@@ -207,6 +219,10 @@ class MainActivity : ComponentActivity() {
                                     this.bufferTime = playViewModel.getSumBufferTime()
                                     this.score = playViewModel.getScore()
                                 })
+                            }
+
+                            if (playTime >= 60 * 1000) {
+                                playNext() // 播放下一个源
                             }
                         }
                     }
@@ -257,7 +273,7 @@ class MainActivity : ComponentActivity() {
                                 PlayerView(initIjkPlayer)
                                 PlayerInfo(playViewModel)
                             }
-                            SourceList(sourceViewModel, onClick)
+                            SourceList(sourceViewModel, playViewModel, onClick)
                         }
                     }
                 }
@@ -379,12 +395,11 @@ fun PlayerInfo(playViewModel: PlayViewModel) {
 @Composable
 fun SourceList(
     sourceViewModel: SourceViewModel,
+    playViewModel: PlayViewModel,
     onClick: (SourceEntity) -> Unit
 ) {
-    var clickId: Int? by remember { mutableStateOf(null) }
-    var expandedId: Int? by remember { mutableStateOf(null) }
-
     val sources = sourceViewModel.sources.toList()
+    var expandedId: Int? by remember { mutableStateOf(null) }
 
     LazyColumn {
         itemsIndexed(sources) { index, source ->
@@ -393,10 +408,9 @@ fun SourceList(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .clickable(onClick = {
-                        clickId = index
                         onClick(source)
                     })
-                    .background(if (clickId == index) Color.LightGray else Color.White)
+                    .background(if (playViewModel.currSource.value == source) Color.LightGray else Color.White)
                     .padding(4.dp)
                     .fillMaxWidth()
             ) {
