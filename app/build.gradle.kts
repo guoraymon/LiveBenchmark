@@ -90,7 +90,5 @@ dependencies {
     implementation(project(":ijkplayer"))
     implementation("tv.danmaku.ijk.media:ijkplayer-java:0.8.8")
 
-    implementation("com.github.bjoernpetersen:m3u-parser:1.3.0")
-
     implementation("com.github.doyaaaaaken:kotlin-csv-jvm:1.2.0")
 }
