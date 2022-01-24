@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 import com.github.doyaaaaaken.kotlincsv.dsl.csvWriter
 import com.kuolw.ijkplayer.IjkPlayer
 import com.kuolw.livebenchmark.MainApplication
@@ -32,7 +33,6 @@ import com.kuolw.livebenchmark.viewmodel.PlayViewModel
 import com.kuolw.livebenchmark.viewmodel.PlayViewModelFactory
 import com.kuolw.livebenchmark.viewmodel.SourceViewModel
 import com.kuolw.livebenchmark.viewmodel.SourceViewModelFactory
-import net.bjoernpetersen.m3u.M3uParser
 import tv.danmaku.ijk.media.player.IMediaPlayer
 import java.text.DecimalFormat
 import java.util.*
@@ -57,12 +57,12 @@ class MainActivity : ComponentActivity() {
             if (inputStream == null) {
                 return@registerForActivityResult
             }
-            inputStream.reader().use { inputStreamReader ->
-                M3uParser.parse(inputStreamReader).forEach {
+            csvReader().open(inputStream) {
+                readAllAsSequence().forEach { row: List<String> ->
                     sourceViewModel.insert(
                         SourceEntity(
-                            name = it.title!!,
-                            src = it.location.toString()
+                            name = row[0],
+                            src = row[1]
                         )
                     )
                 }
@@ -257,10 +257,10 @@ class MainActivity : ComponentActivity() {
                         topBar = {
                             TopBar(
                                 onImport = {
-                                    import.launch(arrayOf("audio/x-mpegurl"))
+                                    import.launch(arrayOf("text/*"))
                                 },
                                 onExport = {
-                                    export.launch("导出节目源.csv")
+                                    export.launch("export.csv")
                                 },
                                 onDeleteAll = {
                                     deleteALLDialog.value = true
